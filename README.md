@@ -201,6 +201,33 @@ To trust it on your phone:
 
 ---
 
+## The design system
+
+The interface follows Apple's visual language, in `static/shared.css`. The
+discipline that makes it read that way is **restraint**:
+
+- **Near-monochrome.** The chrome carries almost no hue. Page canvas, surfaces
+  and borders are a cool, low-chroma grey ramp.
+- **Two-tier colour.** `--interactive` (near-black) covers links, nav, tabs and
+  focus rings. `--accent` (one blue) is reserved for actions and data emphasis.
+  Because blue is scarce, it means something — roughly one primary button per
+  screen.
+- **Hierarchy from type and space, not colour.** A fluid scale
+  (`clamp()`) with *size-specific tracking*: large type tightens to
+  `-0.028em`, small labels sit at `0`, because a single tracking value is
+  wrong at one end or the other. Leading tracks size inversely.
+- **Hairlines, not dividers.** 1px `--border` at low contrast, plus a soft
+  scroll-edge fade where content passes under floating chrome.
+- **Soft, wide shadows.** High blur, low opacity — nothing looks stuck on.
+- **Materials.** Chrome, sheets and popovers are translucent
+  `backdrop-filter` layers, and material weight encodes hierarchy. Sheets pair
+  with a dimming scrim so the background recedes.
+
+Every colour pair is verified against WCAG AA (4.5:1) in **both** themes by the
+test suite, so the palette can't silently drift into unreadable territory.
+
+![Dark theme](docs/dark-rental.png)
+
 ## The motion layer
 
 `static/motion.js` is a dependency-free spring engine, written from the guidance
@@ -294,8 +321,13 @@ and that velocity survives a reversal.
 `verify-ui.js` drives headless Chrome over the DevTools Protocol, signs in as the
 demo account, walks every page, and checks for uncaught exceptions, that modals
 actually animate rather than snapping, that the drawer travels on and off screen,
-that reduced motion degrades gracefully, and that nothing overflows at phone
-width. It writes reference screenshots to `shots/`.
+that reduced motion degrades gracefully, that nothing overflows at phone width,
+and that every colour pair still meets WCAG AA in both themes. It writes
+reference screenshots to `shots/`.
+
+It uses the Chrome or Edge already installed and Node's built-in WebSocket, so it
+needs no extra packages. If a service worker is caching an older stylesheet, the
+suite detects that and says so rather than measuring the wrong build.
 
 Both exit non-zero on failure, so they work in CI.
 

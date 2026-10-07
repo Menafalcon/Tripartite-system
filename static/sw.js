@@ -1,7 +1,7 @@
 // Bump these whenever the shell changes, so `activate` drops the old entries.
-// (v9: design-foundations rewrite of shared.css + the new motion.js engine.)
-const STATIC_V = 'tri-static-v9';
-const DATA_V   = 'tri-data-v9';
+// (v10: Apple-style visual redesign — neutral palette, new type ramp.)
+const STATIC_V = 'tri-static-v10';
+const DATA_V   = 'tri-data-v10';
 
 const SHELL = [
   '/', '/login.html', '/hub.html', '/rental.html', '/store.html',

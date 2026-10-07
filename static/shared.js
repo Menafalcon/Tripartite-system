@@ -4,6 +4,20 @@ const THEMES = [{id:'light',icon:'fa-sun'},{id:'dark',icon:'fa-moon'}];
 const AI_HISTORY_KEY = 'tripartite_ai_history';
 let currentUser = null;
 
+// ── CHART PALETTE ─────────────────────────────────────────────────────────────
+// Chart.js renders to a canvas, so it cannot read CSS custom properties. These
+// mirror the tokens in shared.css; keeping them in one place means the charts
+// stay in step with the palette instead of drifting into their own scheme.
+const CHART = {
+  accent:   '#0071e3',   // --accent  (actions, primary series)
+  green:    '#187e43',   // --green   (paid, profit)
+  red:      '#d70015',   // --red     (unpaid, costs)
+  amber:    '#b25000',   // --amber   (partial, secondary series)
+  purple:   '#5e5ce6',   // --purple
+  teal:     '#0a6a7a',
+  costs:    'rgba(215,0,21,.55)'
+};
+
 // ── THEME ─────────────────────────────────────────────────────────────────────
 // Note: the initial theme is set by a tiny inline <script> in each page's <head>
 // (before first paint) to avoid a light->dark flash. applyTheme handles changes.

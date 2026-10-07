@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#2563eb">
+<meta name="theme-color" content="#f5f5f7">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Tripartite">
@@ -335,10 +335,10 @@ function renderRentalCharts(){
   const tc=getComputedStyle(document.documentElement).getPropertyValue('--text').trim()||'#333';
   const mc=getComputedStyle(document.documentElement).getPropertyValue('--muted').trim()||'#666';
   const opts={plugins:{legend:{labels:{color:tc,font:{size:11}}}}};
-  cc('chart-status',{type:'doughnut',data:{labels:['Paid','Unpaid','Partial'],datasets:[{data:[paid,unpaid,partial],backgroundColor:['#16a34a','#dc2626','#d97706'],borderWidth:0}]},options:{...opts,cutout:'65%'}});
+  cc('chart-status',{type:'doughnut',data:{labels:['Paid','Unpaid','Partial'],datasets:[{data:[paid,unpaid,partial],backgroundColor:[`${CHART.green}`,`${CHART.red}`,`${CHART.amber}`],borderWidth:0}]},options:{...opts,cutout:'65%'}});
   const labels=units.map(u=>`${u.prop_id} ${u.unit_num||''}`.trim());
-  cc('chart-rent',{type:'bar',data:{labels,datasets:[{label:'Rent',data:units.map(u=>grossRent(u)),backgroundColor:'#4f8ef7',borderRadius:4},{label:'Net',data:units.map(u=>netRent(u)),backgroundColor:'#16a34a',borderRadius:4}]},options:{...opts,scales:{x:{ticks:{color:mc,font:{size:10}}},y:{ticks:{color:mc}}}}});
-  cc('chart-bills',{type:'bar',data:{labels,datasets:[{label:'Water',data:units.map(u=>parseFloat(u.water)||0),backgroundColor:'#06b6d4',borderRadius:3},{label:'Electric',data:units.map(u=>parseFloat(u.electric)||0),backgroundColor:'#d97706',borderRadius:3},{label:'Tax',data:units.map(u=>parseFloat(u.tax)||0),backgroundColor:'#7c3aed',borderRadius:3}]},options:{...opts,scales:{x:{stacked:true,ticks:{color:mc,font:{size:10}}},y:{stacked:true,ticks:{color:mc}}}}});
+  cc('chart-rent',{type:'bar',data:{labels,datasets:[{label:'Rent',data:units.map(u=>grossRent(u)),backgroundColor:`${CHART.accent}`,borderRadius:4},{label:'Net',data:units.map(u=>netRent(u)),backgroundColor:`${CHART.green}`,borderRadius:4}]},options:{...opts,scales:{x:{ticks:{color:mc,font:{size:10}}},y:{ticks:{color:mc}}}}});
+  cc('chart-bills',{type:'bar',data:{labels,datasets:[{label:'Water',data:units.map(u=>parseFloat(u.water)||0),backgroundColor:`${CHART.teal}`,borderRadius:3},{label:'Electric',data:units.map(u=>parseFloat(u.electric)||0),backgroundColor:`${CHART.amber}`,borderRadius:3},{label:'Tax',data:units.map(u=>parseFloat(u.tax)||0),backgroundColor:`${CHART.purple}`,borderRadius:3}]},options:{...opts,scales:{x:{stacked:true,ticks:{color:mc,font:{size:10}}},y:{stacked:true,ticks:{color:mc}}}}});
 }
 
 function renderRentProjection(){

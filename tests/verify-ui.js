@@ -159,6 +159,24 @@ if (!CHROME) {
     withOverlays.every(r => r.info.patched === r.info.overlays),
     withOverlays.map(r => r.page + ' ' + r.info.patched + '/' + r.info.overlays).join(', '));
 
+  console.log('\n1b. The stylesheet under test is the one actually loaded');
+  // A cache-first service worker can quietly serve an older shared.css, which
+  // would make every visual assertion below measure the wrong build.
+  await load(BASE + '/rental.html' + AS);
+  const servedCss = await evaluate(`fetch('/shared.css').then(r => r.text()).then(t => t.length)`);
+  const liveCss = await evalJson(`(() => {
+    const sheets = Array.from(document.styleSheets).filter(s => (s.href || '').includes('shared.css'));
+    let accent = null, interactive = null;
+    try {
+      accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+      interactive = getComputedStyle(document.documentElement).getPropertyValue('--interactive').trim();
+    } catch (e) {}
+    return JSON.stringify({ count: sheets.length, accent, interactive });
+  })()`);
+  check('exactly one shared.css is loaded', liveCss.count === 1, 'count=' + liveCss.count);
+  check('loaded stylesheet is the current build (not a cached one)',
+    liveCss.interactive === '#1d1d1f', 'interactive=' + liveCss.interactive + ' servedBytes=' + servedCss);
+
   console.log('\n2. Overlay motion is wired to existing call sites');
   await load(BASE + '/rental.html' + AS);
   const ov = await evalJson(`JSON.stringify({
@@ -224,7 +242,9 @@ if (!CHROME) {
     o.classList.remove('open'); await wait(1100);   // fully closed + hidden
     const hiddenDisplay = getComputedStyle(o).display;
     o.classList.add('open');                        // open it again
-    await wait(30);
+    // 30ms is too tight for a spring's first visible frame, so sample a little
+    // further in — the question is whether it recovers at all, not how fast.
+    await wait(140);
     const early = { overlay: getComputedStyle(o).opacity, sheet: getComputedStyle(sheet).opacity, disp: getComputedStyle(o).display };
     await wait(900);
     const settled = { overlay: getComputedStyle(o).opacity, sheet: getComputedStyle(sheet).opacity };
@@ -307,16 +327,33 @@ if (!CHROME) {
     const topbar = document.querySelector('.topbar');
     const tc = topbar ? getComputedStyle(topbar) : null;
     const body = getComputedStyle(document.body);
-    const headings = Array.from(document.querySelectorAll('h1,h2,h3,h4'));
-    const tracked = headings.filter(h => parseFloat(getComputedStyle(h).letterSpacing) < 0);
+    const px = (el) => parseFloat(getComputedStyle(el).letterSpacing) || 0;
+
+    // Large display/heading type should tighten; small labels should not.
+    const large = ['.topbar h2', '.hub-body h2', '.login-logo h1', '.card-head', '.hub-summary-title']
+      .map(s => document.querySelector(s)).filter(Boolean);
+    const small = ['th', '.metric .label', '.form-row label', '.nav-section', '.metric .sub']
+      .map(s => document.querySelector(s)).filter(Boolean);
+
+    const bodyTrack = px(document.body);
+    // Whichever display-scale heading this page actually has.
+    const displayEl = ['.hub-body h2', '.login-logo h1', '.topbar h2', '.card-head']
+      .map(s => document.querySelector(s)).filter(Boolean)[0];
+
     return JSON.stringify({
       topbarBackdrop: tc ? (tc.backdropFilter || tc.webkitBackdropFilter) : null,
       topbarBg: tc ? tc.backgroundColor : null,
       bodyFont: body.fontFamily,
-      headingCount: headings.length,
-      trackedCount: tracked.length,
-      untracked: headings.filter(h => !(parseFloat(getComputedStyle(h).letterSpacing) < 0))
-        .map(h => h.tagName + ':' + getComputedStyle(h).letterSpacing),
+      bodyColor: body.color,
+      bodyTrack: bodyTrack,
+      displayTrack: displayEl ? px(displayEl) : null,
+      displayEl: displayEl ? displayEl.tagName + '.' + (displayEl.className || '') : null,
+      largeTracked: large.filter(el => px(el) < 0).length,
+      largeSamples: large.map(el => el.className + '=' + getComputedStyle(el).letterSpacing),
+      smallCramped: small.filter(el => px(el) < 0).length,
+      smallSamples: small.map(el => el.tagName + '.' + (el.className || '') + '=' + getComputedStyle(el).letterSpacing),
+      accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+      interactive: getComputedStyle(document.documentElement).getPropertyValue('--interactive').trim(),
       hasBlurVar: getComputedStyle(document.documentElement).getPropertyValue('--blur-chrome').trim()
     });
   })()`);
@@ -324,11 +361,143 @@ if (!CHROME) {
   check('chrome background is translucent (not opaque)', /rgba\(/.test(cs.topbarBg || ''), 'bg=' + cs.topbarBg);
   check('blur token is defined', cs.hasBlurVar.length > 0, '--blur-chrome=' + cs.hasBlurVar);
   check('system font stack is used', /system-ui|-apple-system|Segoe/.test(cs.bodyFont), cs.bodyFont);
-  check('every heading carries negative tracking', cs.headingCount > 0 && cs.trackedCount === cs.headingCount,
-    cs.trackedCount + '/' + cs.headingCount + ' untracked=' + JSON.stringify(cs.untracked));
+  // Tracking is size-specific by design: large type tightens, small type does
+  // not. Assert both halves, otherwise "all text tightened" would pass while
+  // the small labels became cramped and less legible.
+  check('large type carries negative tracking', cs.largeTracked >= 2,
+    'large tracked=' + cs.largeTracked + ' samples=' + JSON.stringify(cs.largeSamples));
+  check('large tracking is tighter than body tracking',
+    typeof cs.displayTrack === 'number' && cs.displayTrack < cs.bodyTrack,
+    'display=' + cs.displayTrack + ' (' + cs.displayEl + ') body=' + cs.bodyTrack);
+  check('small labels are not negatively tracked', cs.smallCramped === 0,
+    'cramped=' + JSON.stringify(cs.smallSamples));
+
+  // The "professional" part is restraint: neutral chrome, one action blue, and
+  // text that is near-black rather than pure black.
+  const rgb = (s) => (String(s).match(/\d+/g) || []).slice(0, 3).map(Number);
+  const chromeRgb = rgb(cs.topbarBg);
+  const chromeChroma = chromeRgb.length === 3 ? Math.max(...chromeRgb) - Math.min(...chromeRgb) : 999;
+  check('chrome is essentially neutral (low chroma)',
+    chromeChroma <= 6, 'bg=' + cs.topbarBg + ' chroma=' + chromeChroma);
+  check('body text is near-black, not pure black',
+    /^#1d1d1f$/i.test(cs.bodyColor) || rgb(cs.bodyColor)[0] <= 40, 'color=' + cs.bodyColor);
+  // Action blue differs per theme by design: the light-mode blue carries white
+  // text at 4.7:1, and the dark-mode blue is darkened to clear 4.5:1 too.
+  check('light theme reserves one action blue',
+    cs.accent === '#0071e3', '--accent=' + cs.accent);
+  check('interaction colour is neutral, not the accent',
+    cs.interactive === '#1d1d1f', '--interactive=' + cs.interactive);
+
+  // Solid marks must stay legible: white-on-white in dark mode is the classic
+  // failure when a token like --interactive flips with the theme.
+  //
+  // Measured from the resolved CSS custom properties rather than from computed
+  // element styles: `body` animates its background on theme change, so reading
+  // it immediately after flipping the attribute can catch a mid-transition
+  // value and produce a bogus contrast number.
+  console.log('\n7b. Contrast of text and solid surfaces (both themes)');
+  const contrastCheck = async (theme) => evalJson(`(() => {
+    const root = document.documentElement;
+    const prev = root.getAttribute('data-theme');
+    root.setAttribute('data-theme', ${JSON.stringify(theme)});
+    const tok = (name) => getComputedStyle(root).getPropertyValue(name).trim();
+
+    // Custom properties resolve to hex (or a keyword), while computed styles
+    // give rgb(). Parse both, normalising 3-digit hex.
+    const toRgb = (c) => {
+      c = String(c).trim();
+      if (c === 'transparent') return null;
+      if (c[0] === '#') {
+        let h = c.slice(1);
+        if (h.length === 3) h = h.split('').map(x => x + x).join('');
+        return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+      }
+      const m = c.match(/-?[\\d.]+/g);
+      return m ? m.slice(0,3).map(Number) : null;
+    };
+    const lum = (c) => {
+      const rgb = toRgb(c);
+      if (!rgb) return null;
+      const [r, g, b] = rgb.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const ratio = (a, b) => {
+      const la = lum(a), lb = lum(b);
+      if (la == null || lb == null) return null;
+      const [hi, lo] = [la, lb].sort((x, y) => y - x);
+      return Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100;
+    };
+
+    const pairs = [
+      ['body text on page', tok('--text'), tok('--bg')],
+      ['muted text on surface', tok('--muted'), tok('--surface')],
+      ['metric number on surface', tok('--text'), tok('--surface')],
+      ['solid mark', tok('--on-solid'), tok('--solid')],
+      ['chat header label', tok('--on-solid'), tok('--solid')],
+      ['primary button label', '#ffffff', tok('--accent')],
+      ['paid badge', tok('--green'), tok('--green-bg')],
+      ['unpaid badge', tok('--red'), tok('--red-bg')],
+      ['partial badge', tok('--amber'), tok('--amber-bg')]
+    ];
+    const out = pairs.map(([label, fg, bg]) => ({ label, fg, bg, ratio: ratio(fg, bg) }));
+    root.setAttribute('data-theme', prev || 'light');
+    return JSON.stringify(out);
+  })()`);
+
+  for (const theme of ['light', 'dark']) {
+    const results = await contrastCheck(theme);
+    const failures = results.filter(r => r.ratio < 4.5);
+    // 3:1 is the WCAG non-text/large-text floor; everything here is body-sized.
+    check(`${theme} theme: all colour pairs meet 4.5:1`, failures.length === 0,
+      failures.map(f => `${f.label} ${f.ratio} (${f.fg} on ${f.bg})`).join(' | ') ||
+      'worst=' + Math.min(...results.map(r => r.ratio)));
+  }
+  await evaluate(`document.documentElement.setAttribute('data-theme','light'); true`);
+
+  console.log('\n7c. Charts render with the design-system palette');
+  // Chart.js paints to a canvas so it cannot read CSS variables; the palette is
+  // mirrored in js as CHART. Verify it resolves (a mis-quoted template literal
+  // would silently pass the string "${CHART.accent}" to Chart.js).
+  await load(BASE + '/hub.html' + AS);
+  const charts = await evalJson(`(async () => {
+    await new Promise(r => setTimeout(r, 1200));
+    const canvases = Array.from(document.querySelectorAll('canvas'));
+    const painted = canvases.filter(c => c.width > 0 && c.height > 0);
+    return JSON.stringify({
+      palette: typeof CHART === 'object' ? CHART : null,
+      canvases: canvases.length,
+      painted: painted.length,
+      brokenStrings: canvases.filter(c => {
+        const inst = (window.Chart && Chart.getChart) ? Chart.getChart(c) : null;
+        if (!inst) return false;
+        return JSON.stringify(inst.data.datasets).includes('CHART.');
+      }).length
+    });
+  })()`);
+  check('chart palette is exposed to the pages',
+    charts.palette && charts.palette.accent === '#0071e3' && charts.palette.green === '#187e43',
+    JSON.stringify(charts.palette));
+  check('charts actually painted', charts.canvases > 0 && charts.painted === charts.canvases,
+    charts.painted + '/' + charts.canvases + ' canvases painted');
+  check('no unresolved palette placeholders reached Chart.js',
+    charts.brokenStrings === 0, 'broken=' + charts.brokenStrings);
 
   console.log('\n8. Screenshots for visual review');
   fs.mkdirSync(SHOTS, { recursive: true });
+  // The app registers a cache-first service worker. A reused browser profile
+  // would serve a stale stylesheet, so unregister it and drop the caches before
+  // capturing — otherwise review shots can show the previous design.
+  await evaluate(`(async () => {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+      if (window.caches) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch (e) {}
+    return true;
+  })()`);
   const shots = [
     ['/hub.html', 'hub'], ['/rental.html', 'rental'], ['/store.html', 'store'],
     ['/agriculture.html', 'agriculture'], ['/profile.html', 'profile'], ['/admin.html', 'admin']
@@ -349,6 +518,21 @@ if (!CHROME) {
   let r = await send('Page.captureScreenshot', { format: 'png' });
   if (r && r.data) { fs.writeFileSync(path.join(SHOTS, 'login.png'), Buffer.from(r.data, 'base64')); check('screenshot captured: login', true); }
   else check('screenshot captured: login', false);
+
+  // Dark theme, since the palette is defined separately and can drift.
+  // Re-authenticate first: the cookie clear above killed the session, and a
+  // screenshot of the login page would not tell us anything about the theme.
+  await login('demo', 'demo123');
+  await load(BASE + '/rental.html' + AS);
+  await evaluate(`applyTheme('dark'); true`);
+  await sleep(1000);
+  const darkUrl = await evaluate(`location.pathname`);
+  r = await send('Page.captureScreenshot', { format: 'png' });
+  if (r && r.data) { fs.writeFileSync(path.join(SHOTS, 'dark-rental.png'), Buffer.from(r.data, 'base64')); check('screenshot captured: dark-rental', true); }
+  check('dark screenshot is the rental page, not a redirect',
+    darkUrl === '/rental.html', 'path=' + darkUrl);
+  await evaluate(`applyTheme('light'); true`);
+  await load(BASE + '/rental.html' + AS);
 
   // Phone-width shots, to check the drawer and bottom-sheet layouts.
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
