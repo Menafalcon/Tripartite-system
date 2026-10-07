@@ -1,0 +1,347 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'}catch(e){}</script>
+<title>Profile — Tripartite</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tripartite">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/shared.css">
+</head>
+<body>
+<div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <i class="fa-solid fa-gear"></i>
+      <span>Profile</span>
+      <div class="sb-actions" id="sb-theme-btns"></div>
+    </div>
+    <div class="user-chip">
+      <div class="uavatar" id="user-avatar"><i class="fa-solid fa-user" style="font-size:9px"></i></div>
+      <div class="uname" id="user-name">User</div>
+      <button class="logout-btn" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+    <div class="nav-back" onclick="window.location.href='/hub.html'"><i class="fa-solid fa-arrow-left"></i> All systems</div>
+    <div class="nav-section">Settings</div>
+    <div class="nav-item active" id="nav-profile"><i class="fa-solid fa-user-pen"></i> My Profile</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="hamburger" id="hamburger" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></div>
+        <h2>Edit Profile</h2>
+      </div>
+    </div>
+    <div class="content">
+      <div class="settings-wrap" style="max-width:640px">
+
+        <!-- PROFILE PICTURE -->
+        <div class="settings-section">
+          <div class="settings-section-head"><i class="fa-solid fa-image-portrait"></i> Profile Picture</div>
+          <div class="settings-section-body" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+            <div class="pic-preview" id="profile-pic-preview" onclick="document.getElementById('pic-file-input').click()" title="Click to change photo">
+              <i class="fa-solid fa-user" style="font-size:28px"></i>
+            </div>
+            <div>
+              <p style="font-size:13px;font-weight:600;margin-bottom:4px">Profile photo</p>
+              <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Click the avatar to upload a new photo</p>
+              <button class="btn sm" onclick="document.getElementById('pic-file-input').click()"><i class="fa-solid fa-camera"></i> Change photo</button>
+            </div>
+            <input type="file" id="pic-file-input" accept="image/*" style="display:none" onchange="uploadProfilePic(event)">
+          </div>
+        </div>
+
+        <!-- DISPLAY NAME -->
+        <div class="settings-section">
+          <div class="settings-section-head"><i class="fa-solid fa-user-pen"></i> Display Name</div>
+          <div class="settings-section-body">
+            <div class="form-row" style="max-width:360px"><label>Full name</label><input id="s-fullname" placeholder="Your full name"></div>
+            <br><button class="btn primary" onclick="saveProfileName()"><i class="fa-solid fa-floppy-disk"></i> Save name</button>
+            <div class="login-err" id="s-name-err" style="text-align:left;margin-top:8px"></div>
+          </div>
+        </div>
+
+        <!-- CHANGE PASSWORD -->
+        <div class="settings-section" id="section-password">
+          <div class="settings-section-head"><i class="fa-solid fa-lock"></i> Change Password</div>
+          <div class="settings-section-body">
+            <div style="display:grid;gap:12px;max-width:360px">
+              <div class="form-row"><label>Current password</label><input id="s-curpwd" type="password" placeholder="Required to change password" autocomplete="current-password"></div>
+              <div class="form-row"><label>New password</label><input id="s-newpwd" type="password" placeholder="Leave blank to keep current" autocomplete="new-password"></div>
+            </div>
+            <br><button class="btn primary" onclick="saveProfile()"><i class="fa-solid fa-floppy-disk"></i> Save password</button>
+            <div class="login-err" id="s-err" style="text-align:left;margin-top:8px"></div>
+          </div>
+        </div>
+
+        <!-- 2FA -->
+        <div class="settings-section" id="section-2fa">
+          <div class="settings-section-head"><i class="fa-solid fa-shield-halved"></i> Two-Factor Authentication (2FA)</div>
+          <div class="settings-section-body" id="totp-settings-body"></div>
+        </div>
+
+        <!-- NVIDIA API KEY -->
+        <div class="settings-section">
+          <div class="settings-section-head"><i class="fa-solid fa-key"></i> NVIDIA NIM API Key</div>
+          <div class="settings-section-body">
+            <div style="max-width:420px">
+              <div class="form-row"><label>API Key</label><input id="s-nim-key" type="password" placeholder="nvapi-…" autocomplete="off"></div>
+              <p style="font-size:12px;color:var(--muted);margin-top:6px">Required for the AI assistant. Get your key from <a href="https://build.nvidia.com" target="_blank" style="color:var(--accent)">build.nvidia.com</a>.</p>
+            </div>
+            <br><button class="btn primary" onclick="saveApiKeys()"><i class="fa-solid fa-floppy-disk"></i> Save API Key</button>
+            <div class="login-err" id="s-api-err" style="text-align:left;margin-top:8px"></div>
+          </div>
+        </div>
+
+        <!-- INSTALL APP -->
+        <div class="settings-section">
+          <div class="settings-section-head"><i class="fa-solid fa-mobile-screen"></i> Install App</div>
+          <div class="settings-section-body">
+            <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Install Tripartite System as a native app for faster access and offline support.</p>
+            <button class="btn primary" id="pwa-install-profile-btn" onclick="triggerPwaInstall()">
+              <i class="fa-solid fa-download"></i> Install App
+            </button>
+            <div id="pwa-install-msg" style="margin-top:8px;font-size:13px;color:var(--muted)"></div>
+            <div style="margin-top:14px;padding:12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.7">
+              <strong style="color:var(--text2)">Manual install instructions:</strong><br>
+              <b>Android (Chrome):</b> Tap <i class="fa-solid fa-ellipsis-vertical"></i> → "Add to home screen" / "Install app"<br>
+              <b>iOS (Safari):</b> Tap <i class="fa-solid fa-arrow-up-from-bracket"></i> → "Add to Home Screen"<br>
+              <b>Desktop Chrome/Edge:</b> Click <i class="fa-solid fa-download"></i> in the address bar
+              <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);color:var(--amber)">
+                <i class="fa-solid fa-circle-info"></i> <b>On a phone over WiFi, install only works over HTTPS.</b>
+                Run the server with <code>python start_https.py</code> and open the
+                <code>https://…:5050</code> address it prints. Accept the security warning once.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOTP Modal -->
+<div class="overlay" id="modal-totp">
+  <div class="modal narrow">
+    <div class="modal-head"><h3 id="totp-modal-title">Set up 2FA</h3><button class="close-btn" onclick="closeModal('modal-totp')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body" id="totp-modal-body"></div>
+    <div class="modal-foot" id="totp-modal-foot"></div>
+  </div>
+</div>
+
+<script src="/motion.js"></script>
+<script src="/shared.js"></script>
+<script>
+let currentUserLocal = null;
+
+(async function init(){
+  setupPWA(); buildThemeButtons('sb-theme-btns');
+  refreshInstallBtn();
+  document.addEventListener('pwa-installable', refreshInstallBtn);
+  document.addEventListener('pwa-installed', refreshInstallBtn);
+  const u = await checkAuth();
+  if (!u) return;
+  currentUserLocal = u;
+  updateUserUI(u);
+  setupOverlayClose();
+  renderSettingsProfile();
+  injectAiBubble();
+  // Admin can't change password via profile (no stored password for admin)
+  if (u.is_superadmin) {
+    document.getElementById('section-password').style.display = 'none';
+    document.getElementById('section-2fa').style.display = 'none';
+  }
+})();
+
+function renderSettingsProfile(){
+  if(!currentUserLocal) return;
+  document.getElementById('s-fullname').value = currentUserLocal.full_name || '';
+  ['s-curpwd','s-newpwd'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['s-err','s-name-err','s-api-err'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='';el.style.color='var(--red)';}});
+  const nimKey = localStorage.getItem('nim_api_key') || '';
+  document.getElementById('s-nim-key').value = nimKey;
+  const pic = document.getElementById('profile-pic-preview');
+  if(pic) pic.innerHTML = currentUserLocal.profile_pic
+    ? `<img src="${API}/profile/picture/${currentUserLocal.profile_pic}" alt="profile">`
+    : `<i class="fa-solid fa-user" style="font-size:26px"></i>`;
+  renderSettingsSecurity();
+}
+
+async function saveApiKeys(){
+  const key = document.getElementById('s-nim-key').value.trim();
+  if(!key){document.getElementById('s-api-err').textContent='Enter an API key';return;}
+  localStorage.setItem('nim_api_key', key);
+  const err = document.getElementById('s-api-err');
+  // Save to the account so the key follows the user across devices
+  try {
+    const r = await fetch(`${API}/nim-key`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:key})});
+    if(!r.ok) throw new Error();
+    if(currentUserLocal) currentUserLocal.nim_api_key = key;
+    err.style.color='var(--green)'; err.textContent='✓ API key saved to your account';
+  } catch(e) {
+    err.style.color='var(--amber)'; err.textContent='Saved on this device, but could not reach the server to sync to your account.';
+  }
+  setTimeout(()=>{err.textContent='';err.style.color='var(--red)';}, 3000);
+}
+
+async function uploadProfilePic(e){
+  const file = e.target.files[0]; if(!file) return;
+  const fd = new FormData(); fd.append('file', file);
+  const r = await fetch(`${API}/profile/picture`,{method:'POST',credentials:'include',body:fd});
+  const d = await r.json();
+  currentUserLocal.profile_pic = d.profile_pic;
+  renderSettingsProfile(); updateUserUI(currentUserLocal);
+}
+
+async function saveProfileName(){
+  const err = document.getElementById('s-name-err'); err.textContent=''; err.style.color='var(--red)';
+  const name = document.getElementById('s-fullname').value.trim();
+  if(!name){err.textContent='Name cannot be empty';return;}
+  const r = await fetch(`${API}/profile`,{method:'PUT',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({full_name:name})});
+  const res = await r.json();
+  if(!r.ok){err.textContent=res.error||'Error saving name';return;}
+  currentUserLocal={...currentUserLocal,...res}; updateUserUI(currentUserLocal);
+  err.style.color='var(--green)'; err.textContent='✓ Name saved';
+  setTimeout(()=>err.textContent='', 2500);
+}
+
+async function saveProfile(){
+  const err = document.getElementById('s-err'); err.textContent=''; err.style.color='var(--red)';
+  const cur = document.getElementById('s-curpwd').value, nw = document.getElementById('s-newpwd').value;
+  if(!cur||!nw){err.textContent='Enter current and new password';return;}
+  const r = await fetch(`${API}/profile`,{method:'PUT',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({current_password:cur,password:nw})});
+  const res = await r.json();
+  if(!r.ok){err.textContent=res.error||'Error';return;}
+  currentUserLocal={...currentUserLocal,...res}; updateUserUI(currentUserLocal);
+  err.style.color='var(--green)'; err.textContent='✓ Password changed';
+  ['s-curpwd','s-newpwd'].forEach(id=>document.getElementById(id).value='');
+  setTimeout(()=>err.textContent='', 2500);
+}
+
+function renderSettingsSecurity(){
+  const body = document.getElementById('totp-settings-body'); if(!currentUserLocal) return;
+  if(currentUserLocal.totp_enabled){
+    body.innerHTML=`<div class="totp-status enabled"><i class="fa-solid fa-shield-check"></i> 2FA is ENABLED</div><p style="font-size:13px;color:var(--text2);margin:11px 0">Your account is protected with Google Authenticator.</p><button class="btn danger" onclick="openDisableTotpModal()"><i class="fa-solid fa-shield-xmark"></i> Disable 2FA</button>`;
+  } else {
+    body.innerHTML=`<div class="totp-status disabled"><i class="fa-solid fa-shield"></i> 2FA not enabled</div><p style="font-size:13px;color:var(--text2);margin:11px 0">Add Google Authenticator for extra security.</p><button class="btn primary" onclick="openSetupTotpModal()"><i class="fa-solid fa-shield-halved"></i> Set up 2FA</button>`;
+  }
+}
+
+async function openSetupTotpModal(){
+  document.getElementById('totp-modal-title').textContent='Set up 2FA';
+  document.getElementById('totp-modal-body').innerHTML='<p style="text-align:center;color:var(--muted)">Loading QR code…</p>';
+  document.getElementById('totp-modal-foot').innerHTML=`<button class="btn" onclick="closeModal('modal-totp')">Cancel</button><button class="btn primary" onclick="verifyTotpSetup()"><i class="fa-solid fa-check"></i> Verify & enable</button>`;
+  document.getElementById('modal-totp').classList.add('open');
+  const r = await fetch(`${API}/totp/setup`,{method:'POST',credentials:'include'}); const d = await r.json();
+  document.getElementById('totp-modal-body').innerHTML=`<div class="totp-qr"><p style="font-size:13px;color:var(--text2);text-align:center">Scan with <strong>Google Authenticator</strong></p><img src="data:image/png;base64,${d.qr}" alt="QR"><p style="font-size:12px;color:var(--muted)">Or enter secret manually:</p><div class="totp-secret">${d.secret}</div><div class="form-row" style="width:100%"><label>6-digit code from the app</label><input id="totp-verify-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000" style="text-align:center;font-size:20px;letter-spacing:6px;font-weight:700" onkeydown="if(event.key==='Enter')verifyTotpSetup()"></div></div><div class="login-err" id="totp-setup-err"></div>`;
+}
+
+async function verifyTotpSetup(){
+  const code = document.getElementById('totp-verify-code')?.value?.trim();
+  if(!code||code.length!==6){document.getElementById('totp-setup-err').textContent='Enter the 6-digit code';return;}
+  const r = await fetch(`${API}/totp/verify`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({code})});
+  const d = await r.json();
+  if(!r.ok){document.getElementById('totp-setup-err').textContent=d.error||'Invalid code';return;}
+  currentUserLocal.totp_enabled=true; closeModal('modal-totp'); renderSettingsSecurity();
+}
+
+function openDisableTotpModal(){
+  document.getElementById('totp-modal-title').textContent='Disable 2FA';
+  document.getElementById('totp-modal-body').innerHTML=`<p style="font-size:13px;color:var(--text2);margin-bottom:13px">Enter your current code to confirm.</p><div class="form-row"><label>6-digit code</label><input id="totp-disable-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000" style="text-align:center;font-size:20px;letter-spacing:6px;font-weight:700"></div><div class="login-err" id="totp-disable-err"></div>`;
+  document.getElementById('totp-modal-foot').innerHTML=`<button class="btn" onclick="closeModal('modal-totp')">Cancel</button><button class="btn danger" onclick="confirmDisableTotp()"><i class="fa-solid fa-shield-xmark"></i> Disable 2FA</button>`;
+  document.getElementById('modal-totp').classList.add('open');
+}
+
+async function confirmDisableTotp(){
+  const code = document.getElementById('totp-disable-code')?.value?.trim();
+  const r = await fetch(`${API}/totp/disable`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({code})});
+  const d = await r.json();
+  if(!r.ok){document.getElementById('totp-disable-err').textContent=d.error||'Invalid code';return;}
+  currentUserLocal.totp_enabled=false; closeModal('modal-totp'); renderSettingsSecurity();
+}
+
+function isAppInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true
+      || localStorage.getItem('pwa_installed') === '1';
+}
+
+function refreshInstallBtn() {
+  const btn = document.getElementById('pwa-install-profile-btn');
+  const msg = document.getElementById('pwa-install-msg');
+  if (!btn) return;
+  if (isAppInstalled()) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> App installed';
+    if (msg) { msg.style.color = 'var(--green)'; msg.textContent = '✓ Tripartite is installed on this device.'; }
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-download"></i> Install App';
+  }
+}
+
+async function triggerPwaInstall() {
+  const msg = document.getElementById('pwa-install-msg');
+  msg.style.color = 'var(--muted)';
+
+  // Already installed?
+  if (isAppInstalled()) {
+    msg.style.color = 'var(--green)';
+    msg.textContent = '✓ App is already installed on this device.'; return;
+  }
+
+  // The real install path — Chrome captured the prompt
+  if (window.pwaInstallPrompt) {
+    window.pwaInstallPrompt.prompt();
+    const choice = await window.pwaInstallPrompt.userChoice;
+    if (choice.outcome === 'accepted') {
+      window.pwaInstallPrompt = null;
+      msg.style.color = 'var(--green)';
+      msg.textContent = '✓ Installing… check your home screen.';
+      document.getElementById('pwa-install-profile-btn').disabled = true;
+    } else {
+      msg.textContent = 'Installation cancelled.';
+    }
+    return;
+  }
+
+  // No prompt available — figure out WHY and tell the user exactly what to do
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const isAndroid = /Android/.test(ua);
+  const secure = window.isSecureContext; // false on http://LAN-ip
+
+  if (!secure) {
+    msg.style.color = 'var(--red)';
+    msg.innerHTML = 'Install needs a secure (HTTPS) connection. You are on <b>' +
+      location.protocol + '//' + location.host + '</b>.<br>' +
+      'Ask the host to run the app with <b>start_https.py</b>, then reopen it as ' +
+      '<b>https://' + location.hostname + ':5050</b> and tap Install again.';
+    return;
+  }
+  if (isIOS) {
+    msg.innerHTML = 'On iPhone/iPad: tap the <b>Share</b> button (□↑) in Safari, then ' +
+      '<b>“Add to Home Screen”</b>. (Safari has no automatic install button.)';
+    return;
+  }
+  if (isAndroid) {
+    msg.innerHTML = 'Tap the <b>⋮</b> menu (top-right of Chrome) → <b>“Add to Home screen”</b> ' +
+      'or <b>“Install app”</b>. If you don\'t see it, reload the page once and wait a few seconds.';
+    return;
+  }
+  msg.innerHTML = 'In Chrome/Edge, click the <b>install icon</b> (⊕ / monitor) in the address bar, ' +
+    'or open the <b>⋮</b> menu → <b>“Install Tripartite System”</b>.';
+}
+</script>
+</body>
+</html>

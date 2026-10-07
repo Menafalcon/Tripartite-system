@@ -1,0 +1,302 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'}catch(e){}</script>
+<title>Agriculture — Tripartite</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tripartite">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/shared.css">
+</head>
+<body>
+<div class="offline-badge" id="offline-badge"><i class="fa-solid fa-wifi-slash"></i> Offline</div>
+<div class="sync-badge" id="sync-badge" onclick="dataSync()"><i class="fa-solid fa-rotate"></i> Sync now</div>
+<div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <i class="fa-solid fa-leaf"></i>
+      <span>Agriculture</span>
+      <div class="sb-actions" id="sb-theme-btns"></div>
+    </div>
+    <div class="user-chip" onclick="window.location.href='/profile.html'">
+      <div class="uavatar" id="user-avatar"><i class="fa-solid fa-user" style="font-size:9px"></i></div>
+      <div class="uname" id="user-name">User</div>
+      <button class="logout-btn" onclick="event.stopPropagation();doLogout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+    <div class="nav-back" onclick="window.location.href='/hub.html'"><i class="fa-solid fa-arrow-left"></i> All systems</div>
+    <div class="nav-section">Agriculture</div>
+    <div class="nav-item active" onclick="showView('farm-list')" id="nav-farm-list"><i class="fa-solid fa-map"></i> My Farms</div>
+    <div class="nav-item" onclick="showView('farm-workers')" id="nav-farm-workers"><i class="fa-solid fa-person-digging"></i> Workers log</div>
+    <div class="nav-item" onclick="showView('farm-harvest')" id="nav-farm-harvest"><i class="fa-solid fa-seedling"></i> Harvest projections</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="hamburger" id="hamburger" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></div>
+        <h2 id="page-title">My Farms</h2>
+      </div>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </div>
+    <div class="content">
+      <div id="view-farm-list"><div id="farm-list-content"></div></div>
+      <div id="view-farm-workers" class="view-hidden"><div id="farm-workers-content"></div></div>
+      <div id="view-farm-harvest" class="view-hidden"><div id="farm-harvest-content"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Farm Modal -->
+<div class="overlay" id="modal-farm">
+  <div class="modal wide">
+    <div class="modal-head"><h3 id="farm-modal-title">Add farm</h3><button class="close-btn" onclick="closeModal('modal-farm')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-row full"><label>Farm name *</label><input id="fm-name" placeholder="Ferme Ain Draham"></div>
+        <div class="form-row full"><label>Location (optional)</label><input id="fm-location" placeholder="GPS or description"></div>
+        <div class="form-row"><label>Size (hectares)</label><input id="fm-size" type="number" min="0" step="0.01" placeholder="2.5"></div>
+        <div class="form-row" style="flex-direction:row;align-items:center;gap:14px;flex-wrap:wrap;padding-top:16px">
+          <label class="form-check"><input type="checkbox" id="fm-solar"> Solar panels</label>
+          <label class="form-check"><input type="checkbox" id="fm-well"> Well</label>
+        </div>
+        <div class="form-section">Trees</div>
+        <div class="form-row full">
+          <div id="fm-trees-list" style="margin-bottom:7px"></div>
+          <div style="display:flex;gap:7px">
+            <input id="fm-tree-type" placeholder="Tree type (e.g. Olive)" style="flex:1;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--surface);color:var(--text);outline:none">
+            <input id="fm-tree-count" type="number" min="1" placeholder="Count" style="width:80px;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--surface);color:var(--text);outline:none">
+            <button class="btn sm" onclick="addTreeRow()"><i class="fa-solid fa-plus"></i> Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-farm')">Cancel</button>
+      <button class="btn primary" onclick="saveFarm()"><i class="fa-solid fa-floppy-disk"></i> Save farm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Worker Modal -->
+<div class="overlay" id="modal-worker">
+  <div class="modal narrow">
+    <div class="modal-head"><h3>Add day worker</h3><button class="close-btn" onclick="closeModal('modal-worker')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div style="display:grid;gap:11px">
+        <div class="form-row"><label>Farm</label><select id="wk-farm" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--surface);color:var(--text);outline:none"></select></div>
+        <div class="form-row"><label>Worker name</label><input id="wk-name" placeholder="Mohamed Ben Ali"></div>
+        <div class="form-row"><label>Task</label><input id="wk-task" placeholder="Pruning, cleaning…"></div>
+        <div class="form-row"><label>Daily cost (DT)</label><input id="wk-cost" type="number" min="0" step="0.5" placeholder="25"></div>
+        <div class="form-row"><label>Number of days</label><input id="wk-days" type="number" min="1" value="1"></div>
+        <div class="form-row"><label>Date</label><input id="wk-date" type="date"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-worker')">Cancel</button>
+      <button class="btn primary" onclick="saveWorker()"><i class="fa-solid fa-floppy-disk"></i> Add worker</button>
+    </div>
+  </div>
+</div>
+
+<!-- Harvest Modal -->
+<div class="overlay" id="modal-harvest">
+  <div class="modal">
+    <div class="modal-head"><h3>Add harvest projection</h3><button class="close-btn" onclick="closeModal('modal-harvest')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-row"><label>Farm</label><select id="hv-farm" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--surface);color:var(--text);outline:none"></select></div>
+        <div class="form-row"><label>Tree type</label><input id="hv-tree" placeholder="Olive, Fig, Almond…"></div>
+        <div class="form-row"><label>Expected yield (kg)</label><input id="hv-kg" type="number" min="0" placeholder="500"></div>
+        <div class="form-row"><label>Price per kg (DT)</label><input id="hv-price" type="number" min="0" step="0.01" placeholder="0.80"></div>
+        <div class="form-row"><label>Harvest date</label><input id="hv-date" type="date"></div>
+        <div class="form-row"><label>Frequency</label>
+          <select id="hv-freq"><option value="yearly">Yearly</option><option value="biennial">Every 2 years</option><option value="seasonal">Seasonal</option></select>
+        </div>
+        <div class="form-row"><label>Buyer / Refinery</label><input id="hv-buyer" placeholder="e.g. Société Olive Sfax"></div>
+        <div class="form-row full"><label>Notes</label><textarea id="hv-notes" placeholder="Optional…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-harvest')">Cancel</button>
+      <button class="btn primary" onclick="saveHarvest()"><i class="fa-solid fa-floppy-disk"></i> Save projection</button>
+    </div>
+  </div>
+</div>
+
+<script src="/motion.js"></script>
+<script src="/shared.js"></script>
+<script>
+let farms=[], editFarmId=null, farmTreeRows=[];
+
+const viewTitles={'farm-list':'My Farms','farm-workers':'Workers Log','farm-harvest':'Harvest Projections'};
+const viewActions={'farm-list':`<button class="btn primary" onclick="openFarmModal()"><i class="fa-solid fa-plus"></i> Add farm</button>`,'farm-workers':`<button class="btn primary" onclick="openWorkerModal()"><i class="fa-solid fa-person-digging"></i> Log worker</button>`,'farm-harvest':`<button class="btn primary" onclick="openHarvestModal()"><i class="fa-solid fa-plus"></i> Add projection</button>`};
+
+(async function init(){
+  setupPWA(); buildThemeButtons('sb-theme-btns');
+  const u = await checkAuth();
+  if (!u) return;
+  if (u.is_superadmin) { window.location.href='/hub.html'; return; }
+  updateUserUI(u);
+  setupOverlayClose();
+  await dataSync();
+  loadFarms();
+  showView('farm-list');
+  injectAiBubble();
+  document.addEventListener('datachanged', loadFarms);
+})();
+
+function showView(name){
+  document.querySelectorAll('[id^="view-"]').forEach(el=>el.classList.add('view-hidden'));
+  document.getElementById('view-'+name)?.classList.remove('view-hidden');
+  document.getElementById('page-title').textContent=viewTitles[name]||name;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('nav-'+name)?.classList.add('active');
+  document.getElementById('topbar-actions').innerHTML=viewActions[name]||'';
+  closeSidebar();
+  if(name==='farm-list') renderFarmList();
+  if(name==='farm-workers') renderFarmWorkers();
+  if(name==='farm-harvest') renderFarmHarvest();
+}
+
+function loadFarms(){
+  farms = dataGet('farms');
+  renderFarmList();
+}
+
+function renderFarmList(){
+  const c=document.getElementById('farm-list-content'); if(!c) return;
+  if(farms.length===0){c.innerHTML='<div class="empty-state"><i class="fa-solid fa-seedling"></i><p>No farms yet. Add one!</p></div>';return;}
+  c.innerHTML=farms.map(farm=>{
+    const wc=(farm.workers||[]).reduce((s,w)=>s+w.daily_cost*w.days,0);
+    const pr=(farm.harvest_projections||[]).reduce((s,p)=>s+p.expected_kg*p.price_per_kg,0);
+    return `<div class="farm-card">
+      <div class="farm-header" onclick="toggleFarm('fb-${farm.id}')">
+        <div>
+          <h3><i class="fa-solid fa-leaf" style="color:var(--green);margin-right:5px"></i>${escHtml(farm.name)}</h3>
+          <div class="farm-meta">
+            ${farm.location?`<span><i class="fa-solid fa-location-dot"></i>${escHtml(farm.location)}</span>`:''}
+            ${farm.size_hectares?`<span><i class="fa-solid fa-ruler-combined"></i>${farm.size_hectares} ha</span>`:''}
+            ${farm.has_solar?`<span><i class="fa-solid fa-solar-panel" style="color:var(--amber)"></i>Solar</span>`:''}
+            ${farm.has_well?`<span><i class="fa-solid fa-droplet" style="color:var(--accent)"></i>Well</span>`:''}
+            <span><i class="fa-solid fa-tree" style="color:var(--green)"></i>${(farm.trees||[]).reduce((s,t)=>s+t.count,0)} trees</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center">
+          <button class="btn sm primary" onclick="event.stopPropagation();openFarmModal(${farm.id})"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn sm danger" onclick="event.stopPropagation();deleteFarm(${farm.id})"><i class="fa-solid fa-trash"></i></button>
+          <i class="fa-solid fa-chevron-down" style="color:var(--muted)"></i>
+        </div>
+      </div>
+      <div id="fb-${farm.id}" class="farm-body">
+        <div class="farm-section">Trees</div>
+        ${(farm.trees||[]).length===0?'<p style="font-size:12px;color:var(--muted)">No trees added</p>':farm.trees.map(t=>`<div class="tree-row"><span style="flex:1;font-weight:600;font-size:13px"><i class="fa-solid fa-tree" style="color:var(--green);margin-right:5px"></i>${escHtml(t.type)}</span><span style="font-size:12px;color:var(--muted)">${t.count} trees</span></div>`).join('')}
+        <div class="farm-section">Workers <button class="btn xs" onclick="openWorkerModal(${farm.id})"><i class="fa-solid fa-plus"></i></button></div>
+        ${(farm.workers||[]).length===0?'<p style="font-size:12px;color:var(--muted)">No workers logged</p>':farm.workers.map(w=>`<div class="worker-row"><i class="fa-solid fa-person-digging" style="color:var(--muted)"></i><div style="flex:1;font-weight:600;font-size:13px">${escHtml(w.name)}</div><span style="font-size:11px;color:var(--muted)">${escHtml(w.task||'—')} · ${w.days}d · ${w.date}</span><span style="font-size:13px;font-weight:700;color:var(--amber)">${(w.daily_cost*w.days).toFixed(2)} DT</span><button class="icon-btn del" onclick="deleteWorker(${farm.id},'${w.id}')"><i class="fa-solid fa-trash"></i></button></div>`).join('')}
+        <div class="farm-section">Harvest projections <button class="btn xs" onclick="openHarvestModal(${farm.id})"><i class="fa-solid fa-plus"></i></button></div>
+        ${(farm.harvest_projections||[]).length===0?'<p style="font-size:12px;color:var(--muted)">No projections yet</p>':farm.harvest_projections.map(p=>`<div class="proj-row"><div style="font-weight:700;font-size:13px;flex:1"><i class="fa-solid fa-seedling" style="color:var(--green);margin-right:4px"></i>${escHtml(p.tree_type)}</div><span class="proj-freq">${p.frequency}</span><span style="font-size:11px;color:var(--muted)"><i class="fa-solid fa-calendar"></i> ${p.harvest_date||'?'}</span><div style="font-size:14px;font-weight:800;color:var(--green)">${(p.expected_kg*p.price_per_kg).toFixed(2)} DT</div><span style="font-size:11px;color:var(--muted)">${p.expected_kg}kg × ${p.price_per_kg} DT/kg</span>${p.buyer?`<span style="font-size:11px;color:var(--muted)">→ ${escHtml(p.buyer)}</span>`:''}<button class="icon-btn del" onclick="deleteProjection(${farm.id},'${p.id}')"><i class="fa-solid fa-trash"></i></button></div>`).join('')}
+        <div class="farm-totals">
+          <div class="farm-total-box"><div class="ftb-label">Worker cost</div><div class="ftb-val v-red">${wc.toFixed(2)} DT</div></div>
+          <div class="farm-total-box"><div class="ftb-label">Projected revenue</div><div class="ftb-val v-green">${pr.toFixed(2)} DT</div></div>
+          <div class="farm-total-box"><div class="ftb-label">Projected profit</div><div class="ftb-val ${pr-wc>=0?'v-green':'v-red'}">${(pr-wc).toFixed(2)} DT</div></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleFarm(id){ const el=document.getElementById(id); if(el) el.style.display=el.style.display==='none'?'':'none'; }
+
+function renderFarmWorkers(){
+  const c=document.getElementById('farm-workers-content'); if(!c) return;
+  const all=[]; farms.forEach(farm=>(farm.workers||[]).forEach(w=>all.push({...w,farm_name:farm.name,farm_id:farm.id})));
+  all.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const totCost=all.reduce((s,w)=>s+w.daily_cost*w.days,0);
+  c.innerHTML=`<div class="metrics" style="margin-bottom:14px">
+    <div class="metric"><div class="label">Workers</div><div class="value v-blue">${all.length}</div></div>
+    <div class="metric"><div class="label">Total cost</div><div class="value v-red">${totCost.toFixed(2)} DT</div></div>
+  </div>`+(all.length===0?'<div class="empty-state"><i class="fa-solid fa-person-digging"></i><p>No workers logged</p></div>':`<div class="tbl-card"><table><thead><tr><th>Farm</th><th>Worker</th><th>Task</th><th>Days</th><th>Daily</th><th>Total</th><th>Date</th><th></th></tr></thead><tbody>${all.map(w=>`<tr><td>${escHtml(w.farm_name)}</td><td><strong>${escHtml(w.name)}</strong></td><td>${escHtml(w.task||'—')}</td><td>${w.days}</td><td>${w.daily_cost.toFixed(2)} DT</td><td><strong class="v-amber">${(w.daily_cost*w.days).toFixed(2)} DT</strong></td><td>${w.date}</td><td><button class="icon-btn del" onclick="deleteWorker(${w.farm_id},'${w.id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`);
+}
+
+function renderFarmHarvest(){
+  const c=document.getElementById('farm-harvest-content'); if(!c) return;
+  const all=[]; farms.forEach(farm=>(farm.harvest_projections||[]).forEach(p=>all.push({...p,farm_name:farm.name,farm_id:farm.id})));
+  all.sort((a,b)=>new Date(a.harvest_date)-new Date(b.harvest_date));
+  const totRev=all.reduce((s,p)=>s+p.expected_kg*p.price_per_kg,0);
+  c.innerHTML=`<div class="metrics" style="margin-bottom:14px">
+    <div class="metric"><div class="label">Projections</div><div class="value v-blue">${all.length}</div></div>
+    <div class="metric"><div class="label">Expected revenue</div><div class="value v-green">${totRev.toFixed(2)} DT</div></div>
+  </div>`+(all.length===0?'<div class="empty-state"><i class="fa-solid fa-seedling"></i><p>No projections yet</p></div>':`<div class="tbl-card"><table><thead><tr><th>Farm</th><th>Tree</th><th>Yield (kg)</th><th>Price/kg</th><th>Revenue</th><th>Date</th><th>Freq.</th><th>Buyer</th><th></th></tr></thead><tbody>${all.map(p=>`<tr><td>${escHtml(p.farm_name)}</td><td><strong>${escHtml(p.tree_type)}</strong></td><td>${p.expected_kg}</td><td>${p.price_per_kg} DT</td><td><strong class="v-green">${(p.expected_kg*p.price_per_kg).toFixed(2)} DT</strong></td><td>${p.harvest_date||'—'}</td><td><span class="proj-freq">${p.frequency}</span></td><td>${escHtml(p.buyer||'—')}</td><td><button class="icon-btn del" onclick="deleteProjection(${p.farm_id},'${p.id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')}</tbody></table></div>`);
+}
+
+function openFarmModal(id){
+  editFarmId=id||null; farmTreeRows=[];
+  if(id){const f=farms.find(x=>x.id===id)||{};document.getElementById('fm-name').value=f.name||'';document.getElementById('fm-location').value=f.location||'';document.getElementById('fm-size').value=f.size_hectares||'';document.getElementById('fm-solar').checked=f.has_solar||false;document.getElementById('fm-well').checked=f.has_well||false;farmTreeRows=[...(f.trees||[])];document.getElementById('farm-modal-title').textContent='Edit farm';}
+  else{['fm-name','fm-location','fm-size'].forEach(f=>document.getElementById(f).value='');document.getElementById('fm-solar').checked=false;document.getElementById('fm-well').checked=false;document.getElementById('farm-modal-title').textContent='Add farm';}
+  renderFarmTreeRows(); document.getElementById('modal-farm').classList.add('open');
+}
+
+function renderFarmTreeRows(){ document.getElementById('fm-trees-list').innerHTML=farmTreeRows.map((t,i)=>`<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;background:var(--surface2);padding:5px 9px;border-radius:6px"><i class="fa-solid fa-tree" style="color:var(--green)"></i><span style="flex:1;font-size:13px"><strong>${escHtml(t.type)}</strong> · ${t.count} trees</span><button class="icon-btn del" onclick="removeFarmTree(${i})"><i class="fa-solid fa-xmark"></i></button></div>`).join(''); }
+
+function addTreeRow(){
+  const type=document.getElementById('fm-tree-type').value.trim(), count=parseInt(document.getElementById('fm-tree-count').value)||0;
+  if(!type||!count){alert('Enter tree type and count.');return;}
+  farmTreeRows.push({type,count}); document.getElementById('fm-tree-type').value=''; document.getElementById('fm-tree-count').value=''; renderFarmTreeRows();
+}
+function removeFarmTree(i){ farmTreeRows.splice(i,1); renderFarmTreeRows(); }
+
+async function saveFarm(){
+  const d={name:document.getElementById('fm-name').value.trim(),location:document.getElementById('fm-location').value.trim(),size_hectares:parseFloat(document.getElementById('fm-size').value)||0,has_solar:document.getElementById('fm-solar').checked,has_well:document.getElementById('fm-well').checked,trees:farmTreeRows};
+  if(!d.name){alert('Farm name required.');return;}
+  if(editFarmId) await dataUpdate('farms', editFarmId, d);
+  else await dataCreate('farms', d);
+  closeModal('modal-farm'); loadFarms();
+}
+
+async function deleteFarm(id){ if(!confirm('Delete this farm?')) return; await dataDelete('farms', id); loadFarms(); }
+
+function openWorkerModal(farmId){
+  const sel=document.getElementById('wk-farm'); sel.innerHTML=farms.map(f=>`<option value="${f.id}" ${f.id===farmId?'selected':''}>${escHtml(f.name)}</option>`).join('');
+  ['wk-name','wk-task','wk-cost'].forEach(f=>document.getElementById(f).value='');
+  document.getElementById('wk-days').value='1'; document.getElementById('wk-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('modal-worker').classList.add('open');
+}
+
+async function saveWorker(){
+  const farmId=parseInt(document.getElementById('wk-farm').value);
+  const d={name:document.getElementById('wk-name').value.trim(),task:document.getElementById('wk-task').value.trim(),daily_cost:parseFloat(document.getElementById('wk-cost').value)||0,days:parseInt(document.getElementById('wk-days').value)||1,date:document.getElementById('wk-date').value};
+  if(!d.name){alert('Worker name required.');return;}
+  if(!navigator.onLine){alert('Adding a worker needs an internet connection.');return;}
+  await fetch(`${API}/farms/${farmId}/workers`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(d)});
+  closeModal('modal-worker'); await dataSync(); loadFarms(); renderFarmWorkers();
+}
+
+async function deleteWorker(farmId,workerId){ if(!confirm('Remove this worker?')) return; if(!navigator.onLine){alert('This needs an internet connection.');return;} await fetch(`${API}/farms/${farmId}/workers/${workerId}`,{method:'DELETE',credentials:'include'}); await dataSync(); loadFarms(); renderFarmWorkers(); }
+
+function openHarvestModal(farmId){
+  const sel=document.getElementById('hv-farm'); sel.innerHTML=farms.map(f=>`<option value="${f.id}" ${f.id===farmId?'selected':''}>${escHtml(f.name)}</option>`).join('');
+  ['hv-tree','hv-kg','hv-price','hv-buyer','hv-notes'].forEach(f=>document.getElementById(f).value='');
+  document.getElementById('hv-date').value=''; document.getElementById('hv-freq').value='yearly';
+  document.getElementById('modal-harvest').classList.add('open');
+}
+
+async function saveHarvest(){
+  const farmId=parseInt(document.getElementById('hv-farm').value);
+  const d={tree_type:document.getElementById('hv-tree').value.trim(),expected_kg:parseFloat(document.getElementById('hv-kg').value)||0,price_per_kg:parseFloat(document.getElementById('hv-price').value)||0,harvest_date:document.getElementById('hv-date').value,frequency:document.getElementById('hv-freq').value,buyer:document.getElementById('hv-buyer').value.trim(),notes:document.getElementById('hv-notes').value.trim()};
+  if(!d.tree_type){alert('Tree type required.');return;}
+  if(!navigator.onLine){alert('Adding a harvest projection needs an internet connection.');return;}
+  await fetch(`${API}/farms/${farmId}/projections`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(d)});
+  closeModal('modal-harvest'); await dataSync(); loadFarms(); renderFarmHarvest();
+}
+
+async function deleteProjection(farmId,projId){ if(!confirm('Delete projection?')) return; if(!navigator.onLine){alert('This needs an internet connection.');return;} await fetch(`${API}/farms/${farmId}/projections/${projId}`,{method:'DELETE',credentials:'include'}); await dataSync(); loadFarms(); renderFarmHarvest(); }
+</script>
+</body>
+</html>

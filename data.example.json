@@ -1,0 +1,647 @@
+{
+  "users": {
+    "demo": {
+      "id": "demo",
+      "password": "demo123",
+      "full_name": "Demo User",
+      "profile_pic": null,
+      "totp_secret": null,
+      "totp_enabled": false,
+      "created_at": "2026-10-07T13:22:56.085554",
+      "next_id": 11,
+      "units": [
+        {
+          "id": 1,
+          "prop_id": "APT-A101",
+          "unit_num": "101",
+          "is_vacant": false,
+          "fname": "Tenant",
+          "lname": "1",
+          "tenant_id": "",
+          "phone": "",
+          "email": "",
+          "rent": 1200,
+          "rent_status": "paid",
+          "water": 45,
+          "electric": 110,
+          "tax": 120,
+          "water_landlord": false,
+          "electric_landlord": false,
+          "tax_landlord": true,
+          "due_date": "2026-07-01",
+          "notes": ""
+        },
+        {
+          "id": 2,
+          "prop_id": "APT-A102",
+          "unit_num": "102",
+          "is_vacant": false,
+          "fname": "Tenant",
+          "lname": "2",
+          "tenant_id": "",
+          "phone": "",
+          "email": "",
+          "rent": 900,
+          "rent_status": "unpaid",
+          "water": 38,
+          "electric": 95,
+          "tax": 90,
+          "water_landlord": false,
+          "electric_landlord": true,
+          "tax_landlord": true,
+          "due_date": "2026-06-01",
+          "notes": ""
+        },
+        {
+          "id": 3,
+          "prop_id": "APT-B201",
+          "unit_num": "201",
+          "is_vacant": false,
+          "fname": "Tenant",
+          "lname": "3",
+          "tenant_id": "",
+          "phone": "",
+          "email": "",
+          "rent": 1500,
+          "rent_status": "paid",
+          "water": 60,
+          "electric": 140,
+          "tax": 150,
+          "water_landlord": false,
+          "electric_landlord": false,
+          "tax_landlord": true,
+          "due_date": "2026-07-01",
+          "notes": ""
+        },
+        {
+          "id": 4,
+          "prop_id": "APT-B202",
+          "unit_num": "202",
+          "is_vacant": false,
+          "fname": "Tenant",
+          "lname": "4",
+          "tenant_id": "",
+          "phone": "",
+          "email": "",
+          "rent": 800,
+          "rent_status": "partial",
+          "water": 30,
+          "electric": 75,
+          "tax": 80,
+          "water_landlord": false,
+          "electric_landlord": false,
+          "tax_landlord": false,
+          "due_date": "2026-06-15",
+          "notes": ""
+        },
+        {
+          "id": 5,
+          "prop_id": "APT-C301",
+          "unit_num": "301",
+          "is_vacant": false,
+          "fname": "Tenant",
+          "lname": "5",
+          "tenant_id": "",
+          "phone": "",
+          "email": "",
+          "rent": 1100,
+          "rent_status": "paid",
+          "water": 42,
+          "electric": 100,
+          "tax": 110,
+          "water_landlord": true,
+          "electric_landlord": false,
+          "tax_landlord": true,
+          "due_date": "2026-07-01",
+          "notes": ""
+        },
+        {
+          "id": 6,
+          "prop_id": "APT-C302",
+          "unit_num": "302",
+          "is_vacant": true,
+          "fname": "Tenant",
+          "lname": "6",
+          "tenant_id": "",
+          "phone": "",
+          "email": "",
+          "rent": 950,
+          "rent_status": "paid",
+          "water": 0,
+          "electric": 0,
+          "tax": 0,
+          "water_landlord": false,
+          "electric_landlord": false,
+          "tax_landlord": false,
+          "due_date": "",
+          "notes": ""
+        },
+        {
+          "id": 7,
+          "prop_id": "APT-D401",
+          "unit_num": "401",
+          "is_vacant": false,
+          "fname": "Tenant",
+          "lname": "7",
+          "tenant_id": "",
+          "phone": "",
+          "email": "",
+          "rent": 1300,
+          "rent_status": "unpaid",
+          "water": 50,
+          "electric": 125,
+          "tax": 130,
+          "water_landlord": false,
+          "electric_landlord": false,
+          "tax_landlord": true,
+          "due_date": "2026-06-01",
+          "notes": ""
+        },
+        {
+          "id": 8,
+          "prop_id": "APT-D402",
+          "unit_num": "402",
+          "is_vacant": false,
+          "fname": "Tenant",
+          "lname": "8",
+          "tenant_id": "",
+          "phone": "",
+          "email": "",
+          "rent": 700,
+          "rent_status": "paid",
+          "water": 25,
+          "electric": 65,
+          "tax": 70,
+          "water_landlord": false,
+          "electric_landlord": false,
+          "tax_landlord": false,
+          "due_date": "2026-07-01",
+          "notes": ""
+        },
+        {
+          "id": 9,
+          "prop_id": "APT-E501",
+          "unit_num": "501",
+          "is_vacant": false,
+          "fname": "Tenant",
+          "lname": "9",
+          "tenant_id": "",
+          "phone": "",
+          "email": "",
+          "rent": 1000,
+          "rent_status": "paid",
+          "water": 40,
+          "electric": 90,
+          "tax": 100,
+          "water_landlord": false,
+          "electric_landlord": false,
+          "tax_landlord": true,
+          "due_date": "2026-07-01",
+          "notes": ""
+        },
+        {
+          "id": 10,
+          "prop_id": "APT-E502",
+          "unit_num": "502",
+          "is_vacant": true,
+          "fname": "Tenant",
+          "lname": "10",
+          "tenant_id": "",
+          "phone": "",
+          "email": "",
+          "rent": 850,
+          "rent_status": "paid",
+          "water": 0,
+          "electric": 0,
+          "tax": 0,
+          "water_landlord": false,
+          "electric_landlord": false,
+          "tax_landlord": false,
+          "due_date": "",
+          "notes": ""
+        }
+      ],
+      "store_next_id": 11,
+      "store_items": [
+        {
+          "id": 1,
+          "name": "Samsung TV 55\"",
+          "description": "",
+          "buy_price": 800,
+          "sell_price": 1200,
+          "quantity": 3,
+          "image": null,
+          "sales": []
+        },
+        {
+          "id": 2,
+          "name": "Dell Laptop 15\"",
+          "description": "",
+          "buy_price": 900,
+          "sell_price": 1400,
+          "quantity": 2,
+          "image": null,
+          "sales": [
+            {
+              "id": "s1",
+              "quantity": 1,
+              "total_price": 1400,
+              "amount_paid": 1400,
+              "remaining": 0,
+              "status": "sold",
+              "date": "2026-10-07T13:22:56.085587",
+              "discount_pct": 0,
+              "payments": [
+                {
+                  "amount": 1400,
+                  "date": "2026-10-07T13:22:56.085589"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "name": "iPhone 14",
+          "description": "",
+          "buy_price": 700,
+          "sell_price": 1100,
+          "quantity": 5,
+          "image": null,
+          "sales": [
+            {
+              "id": "s2",
+              "quantity": 2,
+              "total_price": 2200,
+              "amount_paid": 1100,
+              "remaining": 1100,
+              "status": "installment",
+              "date": "2026-10-07T13:22:56.085592",
+              "discount_pct": 0,
+              "payments": [
+                {
+                  "amount": 1100,
+                  "date": "2026-10-07T13:22:56.085593"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "name": "PlayStation 5",
+          "description": "",
+          "buy_price": 550,
+          "sell_price": 750,
+          "quantity": 1,
+          "image": null,
+          "sales": []
+        },
+        {
+          "id": 5,
+          "name": "LG Refrigerator",
+          "description": "",
+          "buy_price": 600,
+          "sell_price": 900,
+          "quantity": 4,
+          "image": null,
+          "sales": [
+            {
+              "id": "s3",
+              "quantity": 1,
+              "total_price": 900,
+              "amount_paid": 900,
+              "remaining": 0,
+              "status": "sold",
+              "date": "2026-10-07T13:22:56.085595",
+              "discount_pct": 0,
+              "payments": [
+                {
+                  "amount": 900,
+                  "date": "2026-10-07T13:22:56.085597"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "name": "Washing Machine",
+          "description": "",
+          "buy_price": 450,
+          "sell_price": 700,
+          "quantity": 2,
+          "image": null,
+          "sales": []
+        },
+        {
+          "id": 7,
+          "name": "Air Conditioner",
+          "description": "",
+          "buy_price": 500,
+          "sell_price": 800,
+          "quantity": 3,
+          "image": null,
+          "sales": []
+        },
+        {
+          "id": 8,
+          "name": "Microwave Oven",
+          "description": "",
+          "buy_price": 120,
+          "sell_price": 200,
+          "quantity": 6,
+          "image": null,
+          "sales": [
+            {
+              "id": "s4",
+              "quantity": 2,
+              "total_price": 400,
+              "amount_paid": 400,
+              "remaining": 0,
+              "status": "sold",
+              "date": "2026-10-07T13:22:56.085599",
+              "discount_pct": 0,
+              "payments": [
+                {
+                  "amount": 400,
+                  "date": "2026-10-07T13:22:56.085600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "name": "Sony Headphones",
+          "description": "",
+          "buy_price": 80,
+          "sell_price": 150,
+          "quantity": 8,
+          "image": null,
+          "sales": []
+        },
+        {
+          "id": 10,
+          "name": "Smart Watch",
+          "description": "",
+          "buy_price": 200,
+          "sell_price": 350,
+          "quantity": 4,
+          "image": null,
+          "sales": [
+            {
+              "id": "s5",
+              "quantity": 1,
+              "total_price": 315,
+              "amount_paid": 315,
+              "remaining": 0,
+              "status": "sold",
+              "date": "2026-10-07T13:22:56.085602",
+              "discount_pct": 10,
+              "payments": [
+                {
+                  "amount": 315,
+                  "date": "2026-10-07T13:22:56.085604"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "farm_next_id": 11,
+      "farms": [
+        {
+          "id": 1,
+          "name": "Sfax Olive Farm",
+          "location": "Sfax",
+          "size_ha": 5,
+          "crop_type": "Olives",
+          "workers": [
+            {
+              "name": "Worker 11",
+              "daily_cost": 35,
+              "days": 60
+            }
+          ],
+          "harvest_projections": [
+            {
+              "year": 2026,
+              "expected_kg": 8000,
+              "price_per_kg": 1.8
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "id": 2,
+          "name": "Nabeul Citrus Farm",
+          "location": "Nabeul",
+          "size_ha": 3,
+          "crop_type": "Oranges",
+          "workers": [
+            {
+              "name": "Worker 12",
+              "daily_cost": 30,
+              "days": 45
+            }
+          ],
+          "harvest_projections": [
+            {
+              "year": 2026,
+              "expected_kg": 5000,
+              "price_per_kg": 0.9
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "id": 3,
+          "name": "Bizerte Wheat Fields",
+          "location": "Bizerte",
+          "size_ha": 10,
+          "crop_type": "Wheat",
+          "workers": [
+            {
+              "name": "Worker 13",
+              "daily_cost": 40,
+              "days": 30
+            },
+            {
+              "name": "Worker 14",
+              "daily_cost": 38,
+              "days": 30
+            }
+          ],
+          "harvest_projections": [
+            {
+              "year": 2026,
+              "expected_kg": 15000,
+              "price_per_kg": 0.5
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "id": 4,
+          "name": "Tozeur Date Farm",
+          "location": "Tozeur",
+          "size_ha": 4,
+          "crop_type": "Date Palms",
+          "workers": [
+            {
+              "name": "Worker 15",
+              "daily_cost": 45,
+              "days": 40
+            }
+          ],
+          "harvest_projections": [
+            {
+              "year": 2026,
+              "expected_kg": 6000,
+              "price_per_kg": 3.5
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "id": 5,
+          "name": "Ariana Tomato Fields",
+          "location": "Ariana",
+          "size_ha": 2,
+          "crop_type": "Tomatoes",
+          "workers": [
+            {
+              "name": "Worker 16",
+              "daily_cost": 32,
+              "days": 50
+            }
+          ],
+          "harvest_projections": [
+            {
+              "year": 2026,
+              "expected_kg": 12000,
+              "price_per_kg": 0.4
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "id": 6,
+          "name": "Gafsa Pomegranate",
+          "location": "Gafsa",
+          "size_ha": 3.5,
+          "crop_type": "Pomegranate",
+          "workers": [
+            {
+              "name": "Worker 17",
+              "daily_cost": 36,
+              "days": 35
+            }
+          ],
+          "harvest_projections": [
+            {
+              "year": 2026,
+              "expected_kg": 4500,
+              "price_per_kg": 2.2
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "id": 7,
+          "name": "Gabes Pepper Farm",
+          "location": "Gabes",
+          "size_ha": 1.5,
+          "crop_type": "Peppers",
+          "workers": [
+            {
+              "name": "Worker 18",
+              "daily_cost": 28,
+              "days": 55
+            }
+          ],
+          "harvest_projections": [
+            {
+              "year": 2026,
+              "expected_kg": 3000,
+              "price_per_kg": 1.1
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "id": 8,
+          "name": "Monastir Vineyard",
+          "location": "Monastir",
+          "size_ha": 6,
+          "crop_type": "Grapes",
+          "workers": [
+            {
+              "name": "Worker 19",
+              "daily_cost": 42,
+              "days": 65
+            },
+            {
+              "name": "Worker 20",
+              "daily_cost": 38,
+              "days": 65
+            }
+          ],
+          "harvest_projections": [
+            {
+              "year": 2026,
+              "expected_kg": 9000,
+              "price_per_kg": 1.5
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "id": 9,
+          "name": "Beja Barley Fields",
+          "location": "Beja",
+          "size_ha": 8,
+          "crop_type": "Barley",
+          "workers": [
+            {
+              "name": "Worker 21",
+              "daily_cost": 38,
+              "days": 28
+            }
+          ],
+          "harvest_projections": [
+            {
+              "year": 2026,
+              "expected_kg": 10000,
+              "price_per_kg": 0.45
+            }
+          ],
+          "notes": ""
+        },
+        {
+          "id": 10,
+          "name": "Jendouba Apple Orchard",
+          "location": "Jendouba",
+          "size_ha": 4,
+          "crop_type": "Apples",
+          "workers": [
+            {
+              "name": "Worker 22",
+              "daily_cost": 33,
+              "days": 70
+            }
+          ],
+          "harvest_projections": [
+            {
+              "year": 2026,
+              "expected_kg": 7000,
+              "price_per_kg": 1.2
+            }
+          ],
+          "notes": ""
+        }
+      ]
+    }
+  }
+}

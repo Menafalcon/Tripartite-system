@@ -1,0 +1,506 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'}catch(e){}</script>
+<title>Apartments — Tripartite</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tripartite">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/shared.css">
+</head>
+<body>
+<div class="offline-badge" id="offline-badge"><i class="fa-solid fa-wifi-slash"></i> Offline</div>
+<div class="sync-badge" id="sync-badge" onclick="triggerSync()"><i class="fa-solid fa-rotate"></i> Sync now</div>
+<div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <i class="fa-solid fa-building"></i>
+      <span>Apartments</span>
+      <div class="sb-actions" id="sb-theme-btns"></div>
+    </div>
+    <div class="user-chip" onclick="window.location.href='/profile.html'">
+      <div class="uavatar" id="user-avatar"><i class="fa-solid fa-user" style="font-size:9px"></i></div>
+      <div class="uname" id="user-name">User</div>
+      <button class="logout-btn" onclick="event.stopPropagation();doLogout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+    <div class="nav-back" onclick="window.location.href='/hub.html'"><i class="fa-solid fa-arrow-left"></i> All systems</div>
+    <div class="nav-section">Dashboard</div>
+    <div class="nav-item active" onclick="showView('dashboard')" id="nav-dashboard"><i class="fa-solid fa-table-cells-large"></i> Overview</div>
+    <div class="nav-item" onclick="showView('tenants')" id="nav-tenants"><i class="fa-solid fa-users"></i> Tenants</div>
+    <div class="nav-section">Reports</div>
+    <div class="nav-item" onclick="showView('unpaid')" id="nav-unpaid"><i class="fa-solid fa-circle-exclamation"></i> Unpaid rent</div>
+    <div class="nav-item" onclick="showView('bills')" id="nav-bills"><i class="fa-solid fa-bolt"></i> Utility bills</div>
+    <div class="nav-section">Analytics</div>
+    <div class="nav-item" onclick="showView('charts')" id="nav-charts"><i class="fa-solid fa-chart-line"></i> Charts</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="hamburger" id="hamburger" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></div>
+        <h2 id="page-title">Overview</h2>
+      </div>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </div>
+    <div class="content" id="content">
+
+      <!-- DASHBOARD -->
+      <div id="view-dashboard">
+        <div class="metrics" id="metrics"></div>
+        <div class="toolbar">
+          <div class="search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input id="search" placeholder="Search name, property, CIN…" oninput="renderDashboard()"></div>
+          <select class="filter-sel" id="filter-status" onchange="renderDashboard()">
+            <option value="">All</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option><option value="partial">Partial</option>
+          </select>
+        </div>
+        <div class="tbl-card"><table><thead><tr>
+          <th class="sortable" onclick="setSort('prop_id')">Property <span class="sort-icon"></span></th>
+          <th>Tenant</th>
+          <th class="sortable" onclick="setSort('rent')">Rent (DT) <span class="sort-icon"></span></th>
+          <th class="sortable" onclick="setSort('rent_status')">Status <span class="sort-icon"></span></th>
+          <th>Water</th><th>Electric</th><th>Tax</th>
+          <th title="Rent minus costs landlord covers">Net (DT)</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="main-tbody"></tbody>
+        <tfoot><tr id="tfoot-row"></tr></tfoot>
+        </table></div>
+      </div>
+
+      <!-- TENANTS -->
+      <div id="view-tenants" class="view-hidden">
+        <div class="toolbar"><div class="search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input id="search-tenants" placeholder="Search tenants…" oninput="renderTenants()"></div></div>
+        <div class="tbl-card"><table><thead><tr>
+          <th>Property</th><th>Tenant</th><th>CIN</th><th>Phone</th><th>Email</th><th>Rent</th><th>Status</th><th></th>
+        </tr></thead><tbody id="tenants-tbody"></tbody></table></div>
+      </div>
+
+      <!-- UNPAID -->
+      <div id="view-unpaid" class="view-hidden">
+        <div class="tbl-card"><table><thead><tr>
+          <th>Property</th><th>Tenant</th><th>Rent (DT)</th><th>Due date</th><th>Status</th><th></th>
+        </tr></thead><tbody id="unpaid-tbody"></tbody></table></div>
+      </div>
+
+      <!-- BILLS -->
+      <div id="view-bills" class="view-hidden">
+        <div class="tbl-card"><table><thead><tr>
+          <th>Property</th><th>Tenant</th>
+          <th>Water <span style="font-size:10px;opacity:.7">(landlord?)</span></th>
+          <th>Electric <span style="font-size:10px;opacity:.7">(landlord?)</span></th>
+          <th>Tax <span style="font-size:10px;opacity:.7">(you)</span></th>
+          <th>Landlord costs</th><th>Net rent</th><th>Rent status</th>
+        </tr></thead><tbody id="bills-tbody"></tbody>
+        <tfoot><tr id="bills-tfoot"></tr></tfoot></table></div>
+      </div>
+
+      <!-- CHARTS -->
+      <div id="view-charts" class="view-hidden">
+        <div class="charts-grid">
+          <div class="chart-card"><h3>Rent payment status</h3><p>Distribution paid vs unpaid</p><div class="chart-wrap"><canvas id="chart-status"></canvas></div></div>
+          <div class="chart-card"><h3>Revenue by property</h3><p>Monthly rent per unit</p><div class="chart-wrap"><canvas id="chart-rent"></canvas></div></div>
+          <div class="chart-card chart-full"><h3>Utility bills breakdown</h3><p>Water vs electric vs tax per unit</p><div class="chart-wrap" style="height:240px"><canvas id="chart-bills"></canvas></div></div>
+        </div>
+        <div class="card" style="margin-top:4px">
+          <div class="card-head"><span><i class="fa-solid fa-calculator" style="color:var(--accent);margin-right:6px"></i>Rent Projection</span></div>
+          <div class="card-body">
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Total net rent income projected over N months.</p>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+              <label style="font-size:12px;font-weight:600;color:var(--text2)">Number of months:</label>
+              <input type="number" id="proj-months" min="1" max="48" value="6" style="width:90px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--surface);color:var(--text);outline:none" oninput="renderRentProjection()">
+            </div>
+            <div id="rent-projection-result"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROFILE -->
+      <div id="view-profile" class="view-hidden">
+        <div class="profile-wrap">
+          <div class="back-btn" onclick="showView(prevView)"><i class="fa-solid fa-arrow-left"></i> Back</div>
+          <div class="profile-header" id="profile-header"></div>
+          <div class="profile-tabs">
+            <button class="ptab active" onclick="switchPTab('info',this)">Info & billing</button>
+            <button class="ptab" onclick="switchPTab('contract',this)">Contract</button>
+            <button class="ptab" onclick="switchPTab('id-doc',this)">ID copy</button>
+            <button class="ptab" onclick="switchPTab('other',this)">Other docs</button>
+          </div>
+          <div id="ptab-info"></div>
+          <div id="ptab-contract" class="view-hidden"></div>
+          <div id="ptab-id-doc" class="view-hidden"></div>
+          <div id="ptab-other" class="view-hidden"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- UNIT MODAL -->
+<div class="overlay" id="modal-unit">
+  <div class="modal">
+    <div class="modal-head"><h3 id="unit-modal-title">Add unit</h3><button class="close-btn" onclick="closeModal('modal-unit')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-section">Property & Tenant</div>
+        <div class="form-row"><label>Property ID</label><input id="f-pid" placeholder="APT-001"></div>
+        <div class="form-row"><label>Unit number</label><input id="f-unit" placeholder="2A"></div>
+        <div class="form-row full"><label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="f-vacant" onchange="toggleVacant()"> Vacant unit — no tenant assigned</label></div>
+        <div id="tenant-fields">
+        <div class="form-row"><label>First name *</label><input id="f-fname" placeholder="Ahmed"></div>
+        <div class="form-row"><label>Last name *</label><input id="f-lname" placeholder="Ben Ali"></div>
+        <div class="form-row"><label>CIN</label><input id="f-tid" placeholder="12345678"></div>
+        <div class="form-row"><label>Phone</label><input id="f-phone" placeholder="+216 xx xxx xxx"></div>
+        <div class="form-row full"><label>Email</label><input id="f-email" type="email" placeholder="tenant@email.com"></div>
+        </div>
+        <div class="form-section">Financial — Utility ownership</div>
+        <div class="form-row"><label>Monthly rent (DT)</label><input id="f-rent" type="number" min="0" step="0.1" placeholder="1200" oninput="updateRentSplit()"></div>
+        <div class="form-row"><label>Rent status</label>
+          <select id="f-rstatus"><option value="unpaid">Unpaid</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="vacant" disabled hidden>Vacant</option></select>
+        </div>
+        <div class="form-row"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="f-water-landlord" onchange="updateRentSplit();toggleUtilityInput('f-water','f-water-landlord')"> Landlord pays water</label></div>
+        <div class="form-row"><label>Water bill (DT)</label><input id="f-water" type="number" min="0" step="0.1" placeholder="45" oninput="updateRentSplit()" disabled style="opacity:.45;cursor:not-allowed"></div>
+        <div class="form-row"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="f-electric-landlord" onchange="updateRentSplit();toggleUtilityInput('f-electric','f-electric-landlord')"> Landlord pays electric</label></div>
+        <div class="form-row"><label>Electric bill (DT)</label><input id="f-electric" type="number" min="0" step="0.1" placeholder="110" oninput="updateRentSplit()" disabled style="opacity:.45;cursor:not-allowed"></div>
+        <div class="form-row full"><label>Tax — 10% of rent · always paid by you (landlord)</label><input id="f-tax-display" type="text" readonly disabled placeholder="auto" title="Tax is always the landlord's responsibility (10% of rent)" style="opacity:.55;cursor:not-allowed;background:var(--surface2)"><input type="hidden" id="f-tax"></div>
+        <div class="rent-split-info" id="rent-split-info" style="display:none"></div>
+        <div class="form-row"><label>Due date</label><input id="f-due" type="date"></div>
+        <div class="form-row full"><label>Notes</label><textarea id="f-notes" placeholder="Optional notes…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-unit')">Cancel</button>
+      <button class="btn primary" onclick="saveUnit()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOTP Modal -->
+<div class="overlay" id="modal-totp">
+  <div class="modal narrow">
+    <div class="modal-head"><h3 id="totp-modal-title">Set up 2FA</h3><button class="close-btn" onclick="closeModal('modal-totp')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body" id="totp-modal-body"></div>
+    <div class="modal-foot" id="totp-modal-foot"></div>
+  </div>
+</div>
+
+<script src="/motion.js"></script>
+<script src="/shared.js"></script>
+<script>
+let units=[], editUnitId=null, currentUnit=null, prevView='dashboard';
+let sortKey='prop_id', sortDir=1, chartInstances={};
+
+const viewTitles={dashboard:'Overview',tenants:'Tenants',unpaid:'Unpaid Rent',bills:'Utility Bills',charts:'Charts',profile:'Tenant Profile'};
+
+(async function init(){
+  setupPWA(); buildThemeButtons('sb-theme-btns');
+  const u = await checkAuth();
+  if (!u) return;
+  if (u.is_superadmin) { window.location.href='/hub.html'; return; }
+  updateUserUI(u);
+  setupOverlayClose();
+  showView('dashboard');
+  await dataSync();
+  loadUnits();
+  injectAiBubble();
+  document.addEventListener('datachanged', loadUnits);
+  document.addEventListener('themechange', () => { if(units.length) renderRentalCharts(); });
+})();
+
+function showView(name){
+  if(name!=='profile') prevView=name;
+  document.querySelectorAll('[id^="view-"]').forEach(el=>el.classList.add('view-hidden'));
+  const v=document.getElementById('view-'+name); if(v) v.classList.remove('view-hidden');
+  document.getElementById('page-title').textContent=viewTitles[name]||name;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('nav-'+name)?.classList.add('active');
+  const actions={dashboard:`<button class="btn primary" onclick="openAddUnitModal()"><i class="fa-solid fa-plus"></i> Add unit</button>`,tenants:`<button class="btn primary" onclick="openAddUnitModal()"><i class="fa-solid fa-plus"></i> Add unit</button>`};
+  document.getElementById('topbar-actions').innerHTML=actions[name]||'';
+  closeSidebar();
+  if(name==='charts'){Object.keys(chartInstances).forEach(k=>{chartInstances[k].destroy();delete chartInstances[k];}); renderRentalCharts(); setTimeout(renderRentProjection,0);}
+}
+
+async function triggerSync(){ await dataSync(); loadUnits(); }
+
+function loadUnits(){
+  units = dataGet('units');
+  renderDashboard(); renderTenants(); renderUnpaid(); renderBills();
+  checkRentalNotifs(units);
+}
+
+function grossRent(u){return u.is_vacant?0:(parseFloat(u.rent)||0);}  // vacant units earn nothing
+function netRent(u){if(u.is_vacant)return 0;return (parseFloat(u.rent)||0)-((u.water_landlord&&parseFloat(u.water))||0)-((u.electric_landlord&&parseFloat(u.electric))||0)-(parseFloat(u.tax)||0);}
+function totalDue(u){return (parseFloat(u.rent)||0)+(parseFloat(u.water)||0)+(parseFloat(u.electric)||0)+(parseFloat(u.tax)||0);}
+function sortedUnits(list){return [...list].sort((a,b)=>{let va=a[sortKey]??0,vb=b[sortKey]??0;if(sortKey==='total'){va=totalDue(a);vb=totalDue(b);}return va<vb?-sortDir:va>vb?sortDir:0;});}
+function setSort(key){if(sortKey===key)sortDir=-sortDir;else{sortKey=key;sortDir=1;}renderDashboard();}
+
+function renderDashboard(){
+  const q=document.getElementById('search')?.value?.toLowerCase()||'';
+  const st=document.getElementById('filter-status')?.value||'';
+  const filtered=sortedUnits(units).filter(u=>{
+    const s=`${u.fname} ${u.lname} ${u.prop_id} ${u.unit_num} ${u.tenant_id}`.toLowerCase();
+    return(!q||s.includes(q))&&(!st||u.rent_status===st);
+  });
+  document.getElementById('main-tbody').innerHTML=filtered.length===0
+    ?`<tr><td colspan="9"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No units found</p></div></td></tr>`
+    :filtered.map(u=>`<tr>
+      <td><span class="prop-id">${u.prop_id||'—'}</span><br><small style="color:var(--muted)">${u.unit_num||''}</small></td>
+      <td>${u.is_vacant?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--surface2);color:var(--muted);border:1px solid var(--border2);border-radius:5px;padding:2px 7px"><i class="fa-solid fa-door-open"></i> Vacant</span>':`<span class="tenant-link" onclick="openProfile(${u.id})">${u.fname} ${u.lname}</span><div style="font-size:10px;color:var(--muted)">${u.tenant_id||''}</div>`}</td>
+      <td>${fmtDT(u.rent)}</td>
+      <td>${u.is_vacant?'<span style="font-size:11px;color:var(--muted)">—</span>':badgeHtml(u.rent_status||'unpaid')}</td>
+      <td>${fmtDT(u.water)}${u.water_landlord?'<span title="Landlord pays" style="color:var(--accent);margin-left:3px">★</span>':''}</td>
+      <td>${fmtDT(u.electric)}${u.electric_landlord?'<span title="Landlord pays" style="color:var(--accent);margin-left:3px">★</span>':''}</td>
+      <td>${fmtDT(u.tax)}<span title="Always paid by you (landlord)" style="color:var(--accent);margin-left:3px">★</span></td>
+      <td><strong class="${netRent(u)<0?'v-red':'v-green'}">${fmtDT(netRent(u))}</strong></td>
+      <td><div class="action-btns">
+        <div class="icon-btn" onclick="openEditUnitModal(${u.id})"><i class="fa-solid fa-pen"></i></div>
+        <div class="icon-btn del" onclick="deleteUnit(${u.id})"><i class="fa-solid fa-trash"></i></div>
+      </div></td>
+    </tr>`).join('');
+  const paid=units.filter(x=>x.rent_status==='paid').length, unpaid=units.filter(x=>x.rent_status!=='paid').length;
+  const totRent=units.reduce((s,u)=>s+grossRent(u),0), totNet=units.reduce((s,u)=>s+netRent(u),0);
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric"><div class="label">Units</div><div class="value v-blue">${units.length}</div></div>
+    <div class="metric"><div class="label">Paid</div><div class="value v-green">${paid}</div></div>
+    <div class="metric"><div class="label">Unpaid</div><div class="value v-red">${unpaid}</div></div>
+    <div class="metric"><div class="label">Gross rent</div><div class="value">${fmtDT(totRent)} DT</div></div>
+    <div class="metric"><div class="label">Net (after costs)</div><div class="value v-green">${fmtDT(totNet)} DT</div></div>`;
+  const totals=filtered.reduce((s,u)=>({rent:s.rent+grossRent(u),net:s.net+netRent(u)}),{rent:0,net:0});
+  document.getElementById('tfoot-row').innerHTML=`<td colspan="2" class="tfoot-row">Totals (${filtered.length})</td><td class="tfoot-row">${fmtDT(totals.rent)}</td><td class="tfoot-row" colspan="4"></td><td class="tfoot-row v-green">${fmtDT(totals.net)}</td><td class="tfoot-row"></td>`;
+}
+
+function renderTenants(){
+  const q=document.getElementById('search-tenants')?.value?.toLowerCase()||'';
+  const list=sortedUnits(units).filter(u=>!u.is_vacant&&`${u.fname} ${u.lname} ${u.prop_id} ${u.tenant_id} ${u.email} ${u.phone}`.toLowerCase().includes(q));
+  document.getElementById('tenants-tbody').innerHTML=list.length===0
+    ?`<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-users"></i><p>No tenants</p></div></td></tr>`
+    :list.map(u=>`<tr>
+      <td><span class="prop-id">${u.prop_id||'—'}</span></td>
+      <td><span class="tenant-link" onclick="openProfile(${u.id})">${u.fname} ${u.lname}</span></td>
+      <td>${u.tenant_id||'—'}</td><td>${u.phone||'—'}</td><td>${u.email||'—'}</td>
+      <td>${fmtDT(u.rent)}</td><td>${badgeHtml(u.rent_status||'unpaid')}</td>
+      <td><div class="action-btns">
+        <div class="icon-btn" onclick="openEditUnitModal(${u.id})"><i class="fa-solid fa-pen"></i></div>
+        <div class="icon-btn del" onclick="deleteUnit(${u.id})"><i class="fa-solid fa-trash"></i></div>
+      </div></td>
+    </tr>`).join('');
+}
+
+function renderUnpaid(){
+  const list=sortedUnits(units).filter(u=>u.rent_status!=='paid');
+  document.getElementById('unpaid-tbody').innerHTML=list.length===0
+    ?`<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-circle-check" style="color:var(--green)"></i><p>All rents paid!</p></div></td></tr>`
+    :list.map(u=>`<tr>
+      <td><span class="prop-id">${u.prop_id||'—'}</span></td>
+      <td><span class="tenant-link" onclick="openProfile(${u.id})">${u.fname} ${u.lname}</span></td>
+      <td>${fmtDT(u.rent)}</td><td>${u.due_date||'—'}</td>
+      <td>${badgeHtml(u.rent_status||'unpaid')}</td>
+      <td><button class="btn sm success" onclick="markPaid(${u.id})"><i class="fa-solid fa-check"></i> Mark paid</button></td>
+    </tr>`).join('');
+}
+
+function renderBills(){
+  document.getElementById('bills-tbody').innerHTML=units.length===0
+    ?`<tr><td colspan="8"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No units</p></div></td></tr>`
+    :units.map(u=>{
+      const lc=(u.water_landlord?parseFloat(u.water)||0:0)+(u.electric_landlord?parseFloat(u.electric)||0:0)+(parseFloat(u.tax)||0);
+      const net=netRent(u);
+      return `<tr>
+        <td><span class="prop-id">${u.prop_id||'—'}</span></td><td>${u.fname} ${u.lname}</td>
+        <td>${fmtDT(u.water)} ${u.water_landlord?'<span class="badge paid" style="font-size:10px">Landlord</span>':'<span class="badge for-sale" style="font-size:10px">Tenant</span>'}</td>
+        <td>${fmtDT(u.electric)} ${u.electric_landlord?'<span class="badge paid" style="font-size:10px">Landlord</span>':'<span class="badge for-sale" style="font-size:10px">Tenant</span>'}</td>
+        <td>${fmtDT(u.tax)} <span class="badge paid" style="font-size:10px">You</span></td>
+        <td class="v-red"><strong>${fmtDT(lc)}</strong></td>
+        <td class="${net<0?'v-red':'v-green'}"><strong>${fmtDT(net)}</strong></td>
+        <td>${badgeHtml(u.rent_status||'unpaid')}</td>
+      </tr>`;
+    }).join('');
+  const totLC=units.reduce((s,u)=>u.is_vacant?s:s+(u.water_landlord?parseFloat(u.water)||0:0)+(u.electric_landlord?parseFloat(u.electric)||0:0)+(parseFloat(u.tax)||0),0);
+  const totNet=units.reduce((s,u)=>s+netRent(u),0);
+  document.getElementById('bills-tfoot').innerHTML=`<td colspan="2" class="tfoot-row">Totals</td><td class="tfoot-row" colspan="3"></td><td class="tfoot-row v-red">${fmtDT(totLC)}</td><td class="tfoot-row v-green">${fmtDT(totNet)}</td><td class="tfoot-row"></td>`;
+}
+
+function renderRentalCharts(){
+  const cc=(id,cfg)=>{if(chartInstances[id])chartInstances[id].destroy();const ctx=document.getElementById(id);if(ctx)chartInstances[id]=new Chart(ctx,cfg);};
+  const paid=units.filter(x=>x.rent_status==='paid').length, unpaid=units.filter(x=>x.rent_status==='unpaid').length, partial=units.filter(x=>x.rent_status==='partial').length;
+  const tc=getComputedStyle(document.documentElement).getPropertyValue('--text').trim()||'#333';
+  const mc=getComputedStyle(document.documentElement).getPropertyValue('--muted').trim()||'#666';
+  const opts={plugins:{legend:{labels:{color:tc,font:{size:11}}}}};
+  cc('chart-status',{type:'doughnut',data:{labels:['Paid','Unpaid','Partial'],datasets:[{data:[paid,unpaid,partial],backgroundColor:['#16a34a','#dc2626','#d97706'],borderWidth:0}]},options:{...opts,cutout:'65%'}});
+  const labels=units.map(u=>`${u.prop_id} ${u.unit_num||''}`.trim());
+  cc('chart-rent',{type:'bar',data:{labels,datasets:[{label:'Rent',data:units.map(u=>grossRent(u)),backgroundColor:'#4f8ef7',borderRadius:4},{label:'Net',data:units.map(u=>netRent(u)),backgroundColor:'#16a34a',borderRadius:4}]},options:{...opts,scales:{x:{ticks:{color:mc,font:{size:10}}},y:{ticks:{color:mc}}}}});
+  cc('chart-bills',{type:'bar',data:{labels,datasets:[{label:'Water',data:units.map(u=>parseFloat(u.water)||0),backgroundColor:'#06b6d4',borderRadius:3},{label:'Electric',data:units.map(u=>parseFloat(u.electric)||0),backgroundColor:'#d97706',borderRadius:3},{label:'Tax',data:units.map(u=>parseFloat(u.tax)||0),backgroundColor:'#7c3aed',borderRadius:3}]},options:{...opts,scales:{x:{stacked:true,ticks:{color:mc,font:{size:10}}},y:{stacked:true,ticks:{color:mc}}}}});
+}
+
+function renderRentProjection(){
+  const inp=document.getElementById('proj-months'), res=document.getElementById('rent-projection-result');
+  if(!inp||!res) return;
+  let months=parseInt(inp.value)||1; if(months<1){months=1;inp.value=1;} if(months>48){months=48;inp.value=48;}
+  const totalNetPerMonth=units.reduce((s,u)=>s+netRent(u),0);
+  const totalGrossPerMonth=units.reduce((s,u)=>s+grossRent(u),0);
+  const totalCostsPerMonth=totalGrossPerMonth-totalNetPerMonth;
+  res.innerHTML=`<div class="metrics" style="margin-bottom:0">
+    <div class="metric"><div class="label">Gross income</div><div class="value v-blue">${(totalGrossPerMonth*months).toFixed(1)} DT</div><div class="sub">${months}mo × ${totalGrossPerMonth.toFixed(1)}</div></div>
+    <div class="metric"><div class="label">Landlord costs</div><div class="value v-red">−${(totalCostsPerMonth*months).toFixed(1)} DT</div><div class="sub">Water/Electric/Tax</div></div>
+    <div class="metric"><div class="label">Net income</div><div class="value v-green">${(totalNetPerMonth*months).toFixed(1)} DT</div><div class="sub">${months}mo × ${totalNetPerMonth.toFixed(1)}</div></div>
+    <div class="metric"><div class="label">Avg/unit/mo</div><div class="value v-purple">${units.length?(totalNetPerMonth/units.length).toFixed(1):'0'} DT</div><div class="sub">${units.length} unit${units.length!==1?'s':''}</div></div>
+  </div>`;
+}
+
+function toggleUtilityInput(inputId,checkboxId){
+  const cb=document.getElementById(checkboxId), inp=document.getElementById(inputId); if(!inp) return;
+  inp.disabled=!cb.checked; inp.style.opacity=cb.checked?'1':'.45'; inp.style.cursor=cb.checked?'':'not-allowed';
+}
+
+function updateRentSplit(){
+  const rent=parseFloat(document.getElementById('f-rent').value)||0;
+  const water=parseFloat(document.getElementById('f-water').value)||0;
+  const electric=parseFloat(document.getElementById('f-electric').value)||0;
+  const tax=rent*0.1;  // tax is always 10% of rent, always paid by the landlord
+  document.getElementById('f-tax').value=tax.toFixed(2);
+  const taxDisplay=document.getElementById('f-tax-display'); if(taxDisplay) taxDisplay.value=tax.toFixed(2)+' DT';
+  const wL=document.getElementById('f-water-landlord').checked, eL=document.getElementById('f-electric-landlord').checked;
+  const landlordCost=(wL?water:0)+(eL?electric:0)+tax, net=rent-landlordCost;
+  const infoEl=document.getElementById('rent-split-info');
+  let parts=[]; if(wL&&water>0) parts.push(`water ${fmtDT(water)}`); if(eL&&electric>0) parts.push(`electric ${fmtDT(electric)}`); if(tax>0) parts.push(`tax ${fmtDT(tax)} (10%)`);
+  if(landlordCost>0){infoEl.innerHTML=`<i class="fa-solid fa-calculator"></i> Net rent: <strong>${fmtDT(net)} DT</strong> (${fmtDT(rent)} rent − ${parts.join(', ')} = ${fmtDT(landlordCost)} DT costs)`;infoEl.style.display='block';}else infoEl.style.display='none';
+}
+
+function toggleVacant(){
+  const v=document.getElementById('f-vacant').checked;
+  document.getElementById('tenant-fields').style.display=v?'none':'';
+  const st=document.getElementById('f-rstatus');
+  if(v){ st.value='vacant'; st.disabled=true; st.style.opacity='.55'; st.style.cursor='not-allowed'; }
+  else { if(st.value==='vacant') st.value='unpaid'; st.disabled=false; st.style.opacity=''; st.style.cursor=''; }
+}
+
+function openAddUnitModal(){
+  editUnitId=null;
+  ['pid','unit','fname','lname','tid','phone','email','rent','water','electric','due','notes'].forEach(k=>document.getElementById('f-'+k).value='');
+  document.getElementById('f-tax').value=''; document.getElementById('f-rstatus').value='unpaid';
+  document.getElementById('f-vacant').checked=false;
+  document.getElementById('tenant-fields').style.display='';
+  ['f-water-landlord','f-electric-landlord'].forEach(id=>document.getElementById(id).checked=false);
+  toggleUtilityInput('f-water','f-water-landlord'); toggleUtilityInput('f-electric','f-electric-landlord');
+  document.getElementById('f-tax-display').value=''; document.getElementById('rent-split-info').style.display='none';
+  toggleVacant();
+  document.getElementById('unit-modal-title').textContent='Add unit';
+  document.getElementById('modal-unit').classList.add('open');
+}
+
+function openEditUnitModal(id){
+  editUnitId=id; const u=units.find(x=>x.id===id)||{};
+  document.getElementById('f-pid').value=u.prop_id||''; document.getElementById('f-unit').value=u.unit_num||'';
+  const vacant=u.is_vacant||false;
+  document.getElementById('f-vacant').checked=vacant;
+  document.getElementById('tenant-fields').style.display=vacant?'none':'';
+  document.getElementById('f-fname').value=u.fname||''; document.getElementById('f-lname').value=u.lname||'';
+  document.getElementById('f-tid').value=u.tenant_id||''; document.getElementById('f-phone').value=u.phone||'';
+  document.getElementById('f-email').value=u.email||''; document.getElementById('f-rent').value=u.rent||'';
+  document.getElementById('f-water').value=u.water||''; document.getElementById('f-electric').value=u.electric||'';
+  document.getElementById('f-due').value=u.due_date||''; document.getElementById('f-notes').value=u.notes||'';
+  document.getElementById('f-rstatus').value=u.rent_status||'unpaid';
+  document.getElementById('f-water-landlord').checked=u.water_landlord||false;
+  document.getElementById('f-electric-landlord').checked=u.electric_landlord||false;
+  toggleUtilityInput('f-water','f-water-landlord'); toggleUtilityInput('f-electric','f-electric-landlord');
+  toggleVacant();
+  updateRentSplit(); document.getElementById('unit-modal-title').textContent='Edit unit';
+  document.getElementById('modal-unit').classList.add('open');
+}
+
+async function saveUnit(){
+  const isVacant=document.getElementById('f-vacant').checked;
+  const d={prop_id:document.getElementById('f-pid').value.trim()||'NEW',unit_num:document.getElementById('f-unit').value.trim(),is_vacant:isVacant,fname:isVacant?'':document.getElementById('f-fname').value.trim(),lname:isVacant?'':document.getElementById('f-lname').value.trim(),tenant_id:isVacant?'':document.getElementById('f-tid').value.trim(),phone:isVacant?'':document.getElementById('f-phone').value.trim(),email:isVacant?'':document.getElementById('f-email').value.trim(),rent:parseFloat(document.getElementById('f-rent').value)||0,rent_status:isVacant?'vacant':document.getElementById('f-rstatus').value,water:parseFloat(document.getElementById('f-water').value)||0,electric:parseFloat(document.getElementById('f-electric').value)||0,tax:parseFloat(document.getElementById('f-tax').value)||0,due_date:document.getElementById('f-due').value,notes:document.getElementById('f-notes').value.trim(),water_landlord:document.getElementById('f-water-landlord').checked,electric_landlord:document.getElementById('f-electric-landlord').checked,tax_landlord:true};
+  if(!isVacant&&(!d.fname||!d.lname)){alert('First and last name required.'); return;}
+  if(editUnitId) await dataUpdate('units', editUnitId, d);
+  else await dataCreate('units', d);
+  closeModal('modal-unit');
+  loadUnits();
+}
+
+async function deleteUnit(id){
+  if(!confirm('Delete this unit?')) return;
+  await dataDelete('units', id);
+  loadUnits();
+  if(currentUnit?.id===id) showView('dashboard');
+}
+
+async function markPaid(id){
+  const u=units.find(x=>x.id===id); if(!u) return;
+  await dataUpdate('units', id, {...u, rent_status:'paid'});
+  loadUnits();
+}
+
+async function openProfile(id){
+  currentUnit=units.find(u=>u.id===id); if(!currentUnit) return;
+  showView('profile'); const u=currentUnit; const net=netRent(u);
+  document.getElementById('profile-header').innerHTML=`
+    <div class="avatar">${u.fname.charAt(0)}${u.lname.charAt(0)}</div>
+    <div style="flex:1">
+      <h2>${u.fname} ${u.lname}</h2>
+      <div style="color:var(--muted);font-size:12px;margin-bottom:7px">${u.prop_id||''} · Unit ${u.unit_num||'—'}</div>
+      <div class="info-chips">
+        ${u.tenant_id?`<span class="chip"><i class="fa-solid fa-id-card"></i>${u.tenant_id}</span>`:''}
+        ${u.phone?`<span class="chip"><i class="fa-solid fa-phone"></i>${u.phone}</span>`:''}
+        ${badgeHtml(u.rent_status||'unpaid')}
+      </div>
+    </div>
+    <button class="btn sm primary" onclick="openEditUnitModal(${u.id})"><i class="fa-solid fa-pen"></i> Edit</button>`;
+  document.getElementById('ptab-info').innerHTML=`
+    <div class="card"><div class="card-head">Billing</div><div class="card-body">
+      <div class="bill-row"><span class="bill-label">Monthly rent</span><span class="bill-val">${fmtDT(u.rent)} DT</span></div>
+      <div class="bill-row"><span class="bill-label">Water ${u.water_landlord?'<span class="badge paid" style="font-size:10px">Landlord pays</span>':''}</span><span class="bill-val ${u.water_landlord?'v-red':''}">${fmtDT(u.water)} DT</span></div>
+      <div class="bill-row"><span class="bill-label">Electric ${u.electric_landlord?'<span class="badge paid" style="font-size:10px">Landlord pays</span>':''}</span><span class="bill-val ${u.electric_landlord?'v-red':''}">${fmtDT(u.electric)} DT</span></div>
+      <div class="bill-row"><span class="bill-label">Tax <span class="badge paid" style="font-size:10px">You pay</span></span><span class="bill-val v-red">${fmtDT(u.tax)} DT</span></div>
+      <div class="bill-total"><span>Net rent (after your costs)</span><span>${fmtDT(net)} DT</span></div>
+      ${u.due_date?`<p style="font-size:11px;color:var(--muted);margin-top:7px"><i class="fa-solid fa-calendar"></i> Due: ${u.due_date}</p>`:''}
+      ${u.notes?`<p style="font-size:12px;color:var(--text2);margin-top:7px;background:var(--surface2);padding:8px;border-radius:6px">${u.notes}</p>`:''}
+    </div></div>`;
+  ['contract','id-doc','other'].forEach(type=>{
+    const docs=(u.documents||[]).filter(d=>d.doc_type===type);
+    const labels={contract:'Contract','id-doc':'ID document',other:'Other docs'};
+    const inputId=`upl-${type}-${u.id}`;
+    document.getElementById('ptab-'+type).innerHTML=`<div class="card"><div class="card-head">${labels[type]}</div><div class="card-body">
+      <input type="file" id="${inputId}" style="display:none" onchange="uploadDoc(event,${u.id},'${type}')">
+      ${docs.length===0
+        ?`<div class="upload-zone" onclick="document.getElementById('${inputId}').click()"><i class="fa-solid fa-cloud-arrow-up"></i><p>Click to upload</p></div>`
+        :`<div class="doc-grid">${docs.map(d=>{
+          const isImg=/\.(png|jpg|jpeg|gif|webp)$/i.test(d.filename), isPdf=/\.pdf$/i.test(d.filename);
+          return `<div class="doc-item"><div class="doc-preview" onclick="window.open('${API}/documents/${d.id}','_blank')">${isImg?`<img src="${API}/documents/${d.id}" style="width:100%;height:100%;object-fit:cover">`:`<i class="fa-solid ${isPdf?'fa-file-pdf':'fa-file-word'}" style="font-size:28px;${isPdf?'color:var(--red)':''}"></i>`}</div><div class="doc-meta"><div class="doc-name">${d.filename}</div><div style="font-size:10px;color:var(--muted)">${(d.uploaded_at||'').split('T')[0]}</div><div style="display:flex;gap:3px;margin-top:4px"><button class="btn xs" onclick="window.open('${API}/documents/${d.id}','_blank')"><i class="fa-solid fa-eye"></i></button><button class="btn xs danger" onclick="deleteDoc('${d.id}')"><i class="fa-solid fa-trash"></i></button></div></div></div>`;
+        }).join('')}</div><button class="btn sm" style="margin-top:9px" onclick="document.getElementById('${inputId}').click()"><i class="fa-solid fa-plus"></i> Add more</button>`}
+    </div></div>`;
+  });
+}
+
+function switchPTab(name,btn){
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
+  ['info','contract','id-doc','other'].forEach(t=>{const el=document.getElementById('ptab-'+t);if(el)el.className=t===name?'view-active':'view-hidden';});
+}
+
+async function uploadDoc(e,unitId,docType){
+  const file=e.target.files[0]; if(!file) return;
+  const fd=new FormData(); fd.append('file',file); fd.append('doc_type',docType);
+  await fetch(`${API}/units/${unitId}/documents`,{method:'POST',credentials:'include',body:fd});
+  await dataSync(); loadUnits();
+  currentUnit=units.find(u=>u.id===unitId); openProfile(unitId);
+}
+
+async function deleteDoc(docId){
+  if(!confirm('Delete this document?')) return;
+  const uid=currentUnit?.id;
+  await fetch(`${API}/documents/${docId}`,{method:'DELETE',credentials:'include'});
+  await dataSync(); loadUnits();
+  currentUnit=units.find(u=>u.id===uid); if(currentUnit) openProfile(uid);
+}
+</script>
+</body>
+</html>

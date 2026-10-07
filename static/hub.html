@@ -1,0 +1,220 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'}catch(e){}</script>
+<title>Tripartite System — Hub</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tripartite">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/shared.css">
+</head>
+<body>
+<div class="offline-badge" id="offline-badge"><i class="fa-solid fa-wifi-slash"></i> Offline</div>
+
+<div class="hub-page">
+  <div class="hub-header">
+    <h1><i class="fa-solid fa-solar-panel"></i><span class="hub-title-text"> Tripartite System</span></h1>
+    <div class="hub-header-right">
+      <div id="hub-theme-btns" style="display:flex;gap:4px"></div>
+      <div class="hub-user" id="hub-user-chip" onclick="window.location.href='/profile.html'">
+        <div class="hub-avatar" id="hub-avatar"><i class="fa-solid fa-user"></i></div>
+        <span style="font-size:13px;font-weight:600" id="hub-uname">User</span>
+      </div>
+      <button class="btn sm" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+    </div>
+  </div>
+
+  <div class="hub-body">
+    <h2>Welcome, <span id="hub-greeting">User</span></h2>
+    <p id="hub-subtitle">Choose a system to manage</p>
+
+    <div class="hub-cards" id="hub-cards">
+      <div class="hub-card hc-rent" id="card-rental" onclick="window.location.href='/rental.html'">
+        <div class="hc-icon"><i class="fa-solid fa-building"></i></div>
+        <h3>Apartments</h3><p>Tenants, bills, contracts</p>
+      </div>
+      <div class="hub-card hc-store" id="card-store" onclick="window.location.href='/store.html'">
+        <div class="hc-icon"><i class="fa-solid fa-store"></i></div>
+        <h3>Store</h3><p>Inventory, sales, installments</p>
+      </div>
+      <div class="hub-card hc-farm" id="card-farm" onclick="window.location.href='/agriculture.html'">
+        <div class="hc-icon"><i class="fa-solid fa-leaf"></i></div>
+        <h3>Agriculture</h3><p>Farms, trees, harvest</p>
+      </div>
+      <div class="hub-card hc-ai" onclick="window.location.href='/ai.html'">
+        <div class="hc-icon"><i class="fa-solid fa-robot"></i></div>
+        <h3>AI Assistant</h3><p>Powered by NVIDIA NIM</p>
+      </div>
+      <div class="hub-card" id="card-profile" onclick="window.location.href='/profile.html'" style="border-color:var(--purple)">
+        <div class="hc-icon" style="background:var(--purple-bg)"><i class="fa-solid fa-gear" style="color:var(--purple)"></i></div>
+        <h3>Profile</h3><p>Name, photo, 2FA, API key</p>
+      </div>
+      <div class="hub-card hc-admin" id="card-admin" style="display:none" onclick="window.location.href='/admin.html'">
+        <div class="hc-icon"><i class="fa-solid fa-shield-halved"></i></div>
+        <h3>Admin Panel</h3><p>Manage all accounts</p>
+      </div>
+    </div>
+
+    <!-- FINANCIAL SUMMARY -->
+    <div class="hub-summary" id="hub-summary">
+      <div class="hub-summary-title"><i class="fa-solid fa-chart-pie"></i> Business Overview</div>
+      <div class="hub-summary-metrics" id="hub-summary-metrics">
+        <div class="metric"><div class="label">Loading…</div><div class="value">—</div></div>
+      </div>
+      <div class="hub-summary-charts">
+        <div class="hub-chart-card">
+          <div class="hub-chart-title">Revenue by Business</div>
+          <div style="position:relative;height:200px"><canvas id="hub-chart-revenue"></canvas></div>
+        </div>
+        <div class="hub-chart-card">
+          <div class="hub-chart-title">Costs vs Net Profit</div>
+          <div style="position:relative;height:200px"><canvas id="hub-chart-profit"></canvas></div>
+        </div>
+        <div class="hub-chart-card hub-chart-full">
+          <div class="hub-chart-title">Revenue Share by Sector</div>
+          <div style="position:relative;height:180px"><canvas id="hub-chart-share"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/motion.js"></script>
+<script src="/shared.js"></script>
+<script>
+let hubChartInstances = {};
+
+(async function init() {
+  setupPWA();
+  buildThemeButtons('hub-theme-btns');
+  const u = await checkAuth();
+  if (!u) return;
+  updateUserUI(u);
+
+  if (u.is_superadmin) {
+    // Admin only sees AI and Admin panel
+    document.getElementById('card-rental').style.display = 'none';
+    document.getElementById('card-store').style.display = 'none';
+    document.getElementById('card-farm').style.display = 'none';
+    document.getElementById('card-profile').style.display = 'none';
+    document.getElementById('card-admin').style.display = 'block';
+    document.getElementById('hub-user-chip').onclick = null;
+    document.getElementById('hub-summary').style.display = 'none';
+    document.getElementById('hub-subtitle').textContent = 'Admin control panel';
+  } else {
+    document.getElementById('card-admin').style.display = 'none';
+    loadHubSummary();
+  }
+})();
+
+let _lastHubData = null;
+document.addEventListener('themechange', () => { if (_lastHubData) renderHubSummary(..._lastHubData); });
+document.addEventListener('datachanged', () => { const ru=dataGet('units'),si=dataGet('store'),fa=dataGet('farms'); _lastHubData=[ru,si,fa]; renderHubSummary(ru,si,fa); });
+
+async function loadHubSummary() {
+  // Local-first: refresh from server when online, then read from the local store
+  // so the dashboard also works offline.
+  await dataSync();
+  const ru = dataGet('units'), si = dataGet('store'), fa = dataGet('farms');
+  _lastHubData = [ru, si, fa];
+  renderHubSummary(ru, si, fa);
+}
+
+function renderHubSummary(ru, si, fa) {
+  const occupied = ru.filter(u => !u.is_vacant);   // vacant units earn nothing
+  const rentalGross = occupied.reduce((s,u) => s + (parseFloat(u.rent)||0), 0);
+  const rentalCosts = occupied.reduce((s,u) => s +
+    (u.water_landlord?parseFloat(u.water)||0:0)+
+    (u.electric_landlord?parseFloat(u.electric)||0:0)+
+    (parseFloat(u.tax)||0), 0);
+  const rentalNet = rentalGross - rentalCosts;
+
+  const storeRevenue = si.reduce((s,item) => {
+    const sold = (item.sales||[]).reduce((a,sale) => a+sale.amount_paid, 0); return s+sold;
+  }, 0);
+  const storeCosts = si.reduce((s,item) => {
+    const soldQty = (item.sales||[]).reduce((a,sale) => a+sale.quantity, 0);
+    return s + soldQty*(parseFloat(item.buy_price)||0);
+  }, 0);
+  const storeProfit = storeRevenue - storeCosts;
+
+  const farmRevenue = fa.reduce((s,farm) => s+(farm.harvest_projections||[]).reduce((a,p)=>a+p.expected_kg*p.price_per_kg,0),0);
+  const farmCosts = fa.reduce((s,farm) => s+(farm.workers||[]).reduce((a,w)=>a+w.daily_cost*w.days,0),0);
+  const farmProfit = farmRevenue - farmCosts;
+
+  const totalRevenue = rentalGross + storeRevenue + farmRevenue;
+  const totalCosts = rentalCosts + storeCosts + farmCosts;
+  const totalProfit = rentalNet + storeProfit + farmProfit;
+
+  const pct = (v,t) => t>0 ? ((v/t)*100).toFixed(1)+'%' : '0%';
+  checkProfitNotifs(rentalNet, storeProfit, farmProfit);
+
+  document.getElementById('hub-summary-metrics').innerHTML = `
+    <div class="metric"><div class="label">Total Revenue</div><div class="value v-green">${totalRevenue.toFixed(1)} DT</div><div class="sub">All businesses</div></div>
+    <div class="metric"><div class="label">Total Costs</div><div class="value v-red">${totalCosts.toFixed(1)} DT</div><div class="sub">All expenses</div></div>
+    <div class="metric"><div class="label">Net Profit</div><div class="value ${totalProfit>=0?'v-green':'v-red'}">${totalProfit.toFixed(1)} DT</div><div class="sub">${pct(totalProfit,totalRevenue)} margin</div></div>
+    <div class="metric"><div class="label">Rental Net</div><div class="value v-blue">${rentalNet.toFixed(1)} DT</div><div class="sub">${pct(rentalNet,totalRevenue)} of total</div></div>
+    <div class="metric"><div class="label">Store Profit</div><div class="value ${storeProfit>=0?'v-green':'v-amber'}">${storeProfit.toFixed(1)} DT</div><div class="sub">${pct(storeProfit,totalRevenue)} of total</div></div>
+    <div class="metric"><div class="label">Farm Profit</div><div class="value ${farmProfit>=0?'v-green':'v-amber'}">${farmProfit.toFixed(1)} DT</div><div class="sub">${pct(farmProfit,totalRevenue)} of total</div></div>`;
+
+  const tc = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#333';
+  const mc = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#666';
+  const hcc = (id, cfg) => {
+    if (hubChartInstances[id]) hubChartInstances[id].destroy();
+    const ctx = document.getElementById(id); if (ctx) hubChartInstances[id] = new Chart(ctx, cfg);
+  };
+  const opts = { plugins:{legend:{labels:{color:tc,font:{size:11}}}} };
+  hcc('hub-chart-revenue',{type:'bar',data:{labels:['Rental','Store','Agriculture'],datasets:[{label:'Revenue (DT)',data:[rentalGross,storeRevenue,farmRevenue],backgroundColor:['#4f8ef7','#16a34a','#d97706'],borderRadius:6}]},options:{...opts,scales:{x:{ticks:{color:mc}},y:{ticks:{color:mc}}}}});
+  hcc('hub-chart-profit',{type:'bar',data:{labels:['Rental','Store','Agriculture'],datasets:[{label:'Costs',data:[rentalCosts,storeCosts,farmCosts],backgroundColor:['#dc2626aa','#dc2626aa','#dc2626aa'],borderRadius:4},{label:'Profit',data:[rentalNet,storeProfit,farmProfit],backgroundColor:['#16a34a','#16a34a','#16a34a'],borderRadius:4}]},options:{...opts,scales:{x:{ticks:{color:mc}},y:{ticks:{color:mc}}}}});
+  const shareData = [rentalGross,storeRevenue,farmRevenue].map(v=>Math.max(0,v));
+  hcc('hub-chart-share',{type:'doughnut',data:{
+    labels:['Rental','Store','Agriculture'],
+    datasets:[{data:shareData,backgroundColor:['#4f8ef7','#16a34a','#d97706'],borderWidth:2,borderColor:'var(--surface)'}]
+  },options:{...opts,cutout:'58%',plugins:{
+    legend:{display:false},
+    tooltip:{callbacks:{
+      label:(ctx)=>{
+        const val=ctx.raw||0;
+        const pctVal=totalRevenue>0?((val/totalRevenue)*100).toFixed(1):0;
+        return ` ${ctx.label}: ${val.toFixed(1)} DT (${pctVal}%)`;
+      }
+    }}
+  },animation:{onComplete:function(){
+    const chart=this; const ctx2=chart.ctx;
+    ctx2.save();
+    chart.data.datasets[0].data.forEach((val,i)=>{
+      const meta=chart.getDatasetMeta(0);
+      if(!meta.data[i]) return;
+      const {x,y}=meta.data[i].tooltipPosition();
+      const pctVal=totalRevenue>0?((val/totalRevenue)*100).toFixed(0):0;
+      ctx2.fillStyle=tc; ctx2.font='bold 11px sans-serif'; ctx2.textAlign='center'; ctx2.textBaseline='middle';
+      if(val>0) ctx2.fillText(pctVal+'%',x,y);
+    });
+    ctx2.restore();
+  }}}});
+  // Custom HTML legend (remove stale one before re-creating)
+  const legendEl=document.querySelector('.hub-chart-full .hub-chart-title');
+  if(legendEl){
+    legendEl.nextElementSibling?.classList.contains('share-legend') && legendEl.nextElementSibling.remove();
+    const lg=document.createElement('div');
+    lg.className='share-legend';
+    lg.style.cssText='display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-size:12px';
+    [['#4f8ef7','Rental',rentalGross],['#16a34a','Store',storeRevenue],['#d97706','Agriculture',farmRevenue]].forEach(([col,label,val])=>{
+      const p=pct(val,totalRevenue);
+      lg.innerHTML+=`<span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:${col};display:inline-block;flex-shrink:0"></span><strong>${label}</strong>: ${val.toFixed(1)} DT <span style="color:var(--muted)">(${p})</span></span>`;
+    });
+    legendEl.after(lg);
+  }
+}
+</script>
+<!-- AI Bubble injected after auth -->
+<script>document.addEventListener('DOMContentLoaded',()=>{ if(typeof injectAiBubble==='function') injectAiBubble(); });</script>
+</body>
+</html>

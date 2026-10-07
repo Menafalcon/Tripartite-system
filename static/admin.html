@@ -1,0 +1,356 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'}catch(e){}</script>
+<title>Admin Panel — Tripartite</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tripartite">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/shared.css">
+<style>
+.user-table{width:100%;border-collapse:collapse}
+.user-table th,.user-table td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:13.5px}
+.user-table th{font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px;background:var(--bg)}
+.user-table tr:hover td{background:var(--hover)}
+.user-table .u-avatar{width:30px;height:30px;border-radius:50%;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent)}
+.user-table .u-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.u-badge.admin{background:var(--amber-bg,#fef9ec);color:var(--amber,#b45309)}
+.u-badge.user{background:var(--green-bg,#f0fdf4);color:var(--green,#16a34a)}
+.u-badge.totp{background:var(--purple-bg,#f3e8ff);color:var(--purple,#7c3aed)}
+.admin-search{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.admin-search input{flex:1;min-width:200px}
+.admin-stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.admin-stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.admin-stat .label{font-size:12px;color:var(--muted);margin-bottom:4px}
+.admin-stat .value{font-size:22px;font-weight:700;color:var(--text)}
+.empty-state{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-state i{font-size:40px;margin-bottom:12px;opacity:.3;display:block}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <i class="fa-solid fa-shield-halved"></i>
+      <span>Admin Panel</span>
+      <div class="sb-actions" id="sb-theme-btns"></div>
+    </div>
+    <div class="user-chip">
+      <div class="uavatar" id="user-avatar"><i class="fa-solid fa-shield-halved" style="font-size:9px"></i></div>
+      <div class="uname" id="user-name">mainAdmin</div>
+      <button class="logout-btn" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+    <div class="nav-back" onclick="window.location.href='/hub.html'"><i class="fa-solid fa-arrow-left"></i> Back to hub</div>
+    <div class="nav-section">Admin</div>
+    <div class="nav-item active"><i class="fa-solid fa-users"></i> User Accounts</div>
+    <div class="nav-item" onclick="window.location.href='/ai.html'"><i class="fa-solid fa-robot"></i> AI Assistant</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="hamburger" id="hamburger" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></div>
+        <i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i>
+        <h2>User Management</h2>
+      </div>
+      <button class="btn primary sm" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus"></i> New account</button>
+    </div>
+    <div class="content">
+      <div class="admin-stat-row" id="admin-stats">
+        <div class="admin-stat"><div class="label">Total Users</div><div class="value" id="stat-total">—</div></div>
+        <div class="admin-stat"><div class="label">2FA Enabled</div><div class="value" id="stat-totp">—</div></div>
+        <div class="admin-stat"><div class="label">Registered Today</div><div class="value" id="stat-today">—</div></div>
+      </div>
+
+      <div class="admin-search">
+        <input id="admin-search" placeholder="Search by name or username…" oninput="filterUsers()" style="background:var(--surface);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none;flex:1;min-width:200px">
+        <button class="btn sm" onclick="loadUsers()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Username</th>
+              <th>Status</th>
+              <th>Joined</th>
+              <th style="text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody">
+            <tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i>Loading…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="overlay" id="modal-edit-user">
+  <div class="modal narrow">
+    <div class="modal-head">
+      <h3 id="edit-user-title">Edit Account</h3>
+      <button class="close-btn" onclick="closeModal('modal-edit-user')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-user-id">
+      <div style="display:grid;gap:14px">
+        <div class="form-row"><label>Full Name</label><input id="edit-fullname" placeholder="Display name"></div>
+        <div class="form-row"><label>Username</label><input id="edit-username" placeholder="Login username" autocomplete="off"></div>
+        <div class="form-row">
+          <label>New Password <span style="font-size:11px;color:var(--muted);font-weight:400">(leave blank to keep current)</span></label>
+          <input id="edit-password" type="password" placeholder="Reset password…" autocomplete="new-password">
+        </div>
+        <div id="edit-totp-row" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+          <span style="font-size:13px"><i class="fa-solid fa-shield-halved" style="color:var(--accent);margin-right:6px"></i> Two-Factor Auth</span>
+          <span id="edit-totp-status" style="font-size:12px;color:var(--muted)">—</span>
+          <button class="btn sm danger" id="edit-totp-btn" style="display:none" onclick="adminDisableTotp()">Disable 2FA</button>
+        </div>
+      </div>
+      <div class="login-err" id="edit-user-err" style="text-align:left;margin-top:10px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-edit-user')">Cancel</button>
+      <button class="btn primary" onclick="saveEditUser()"><i class="fa-solid fa-floppy-disk"></i> Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="overlay" id="modal-create-user">
+  <div class="modal narrow">
+    <div class="modal-head">
+      <h3>Create New Account</h3>
+      <button class="close-btn" onclick="closeModal('modal-create-user')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;gap:14px">
+        <div class="form-row"><label>Full Name</label><input id="create-fullname" placeholder="Display name"></div>
+        <div class="form-row"><label>Username</label><input id="create-username" placeholder="Login username" autocomplete="off"></div>
+        <div class="form-row"><label>Password</label><input id="create-password" type="password" placeholder="Initial password" autocomplete="new-password"></div>
+      </div>
+      <div class="login-err" id="create-user-err" style="text-align:left;margin-top:10px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-create-user')">Cancel</button>
+      <button class="btn primary" onclick="saveCreateUser()"><i class="fa-solid fa-user-plus"></i> Create account</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="overlay" id="modal-delete-user">
+  <div class="modal narrow">
+    <div class="modal-head">
+      <h3>Delete Account</h3>
+      <button class="close-btn" onclick="closeModal('modal-delete-user')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px">Are you sure you want to permanently delete <strong id="delete-user-name"></strong>? This cannot be undone.</p>
+      <input type="hidden" id="delete-user-id">
+      <div class="login-err" id="delete-user-err" style="text-align:left;margin-top:10px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-delete-user')">Cancel</button>
+      <button class="btn danger" onclick="confirmDeleteUser()"><i class="fa-solid fa-trash"></i> Delete permanently</button>
+    </div>
+  </div>
+</div>
+
+<script src="/motion.js"></script>
+<script src="/shared.js"></script>
+<script>
+let allUsers = [];
+
+(async function init(){
+  setupPWA(); buildThemeButtons('sb-theme-btns');
+  const u = await checkAuth(false, true);
+  if (!u) return;
+  updateUserUI(u);
+  setupOverlayClose();
+  injectAiBubble();
+  await loadUsers();
+})();
+
+async function loadUsers(){
+  try {
+    const r = await fetch(`${API}/admin/users`, { credentials: 'include' });
+    if (!r.ok) { showTableError('Access denied or server error'); return; }
+    allUsers = await r.json();
+    renderStats();
+    renderUsersTable(allUsers);
+  } catch(e) {
+    showTableError('Could not load users');
+  }
+}
+
+function renderStats(){
+  document.getElementById('stat-total').textContent = allUsers.length;
+  document.getElementById('stat-totp').textContent = allUsers.filter(u => u.totp_enabled).length;
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('stat-today').textContent = allUsers.filter(u => (u.created_at||'').startsWith(today)).length;
+}
+
+function filterUsers(){
+  const q = document.getElementById('admin-search').value.toLowerCase();
+  const filtered = allUsers.filter(u =>
+    (u.full_name||'').toLowerCase().includes(q) ||
+    (u.username||'').toLowerCase().includes(q)
+  );
+  renderUsersTable(filtered);
+}
+
+function getInitials(name){
+  if (!name) return '?';
+  const parts = name.trim().split(' ');
+  return (parts[0][0] + (parts[1]?.[0]||'')).toUpperCase();
+}
+
+function renderUsersTable(users){
+  const tbody = document.getElementById('users-tbody');
+  if (!users.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-users-slash"></i>No accounts found</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="u-avatar">${getInitials(u.full_name)}</div>
+          <div>
+            <div style="font-weight:600;font-size:14px">${escHtml(u.full_name||'—')}</div>
+            ${u.totp_enabled ? '<span class="u-badge totp"><i class="fa-solid fa-shield-halved"></i> 2FA</span>' : ''}
+          </div>
+        </div>
+      </td>
+      <td style="font-family:monospace;font-size:13px">${escHtml(u.username||'—')}</td>
+      <td>
+        ${u.is_superadmin
+          ? '<span class="u-badge admin"><i class="fa-solid fa-crown"></i> Admin</span>'
+          : '<span class="u-badge user"><i class="fa-solid fa-user"></i> User</span>'}
+      </td>
+      <td style="font-size:12px;color:var(--muted)">${u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
+      <td style="text-align:right">
+        ${u.is_superadmin ? '<span style="font-size:12px;color:var(--muted)">Protected</span>' : `
+          <button class="btn sm" onclick="openEditUser('${u.id||u.username}')" style="margin-right:6px"><i class="fa-solid fa-pen"></i> Edit</button>
+          <button class="btn sm danger" onclick="openDeleteUser('${u.id||u.username}','${escHtml(u.full_name||u.username)}')"><i class="fa-solid fa-trash"></i></button>
+        `}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function showTableError(msg){
+  document.getElementById('users-tbody').innerHTML = `<tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-circle-exclamation"></i>${escHtml(msg)}</div></td></tr>`;
+}
+
+function openCreateUserModal(){
+  ['create-fullname','create-username','create-password'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('create-user-err').textContent = '';
+  document.getElementById('modal-create-user').classList.add('open');
+}
+
+async function saveCreateUser(){
+  const err = document.getElementById('create-user-err'); err.textContent = '';
+  const fullname = document.getElementById('create-fullname').value.trim();
+  const username = document.getElementById('create-username').value.trim();
+  const password = document.getElementById('create-password').value;
+  if (!fullname || !username || !password) { err.textContent = 'All fields are required'; return; }
+  const r = await fetch(`${API}/admin/users`, {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ full_name: fullname, username, password })
+  });
+  const d = await r.json();
+  if (!r.ok) { err.textContent = d.error || 'Error creating account'; return; }
+  closeModal('modal-create-user');
+  await loadUsers();
+}
+
+function openEditUser(userId){
+  const u = allUsers.find(x => (x.id||x.username) === userId); if (!u) return;
+  document.getElementById('edit-user-id').value = userId;
+  document.getElementById('edit-fullname').value = u.full_name || '';
+  document.getElementById('edit-username').value = u.username || '';
+  document.getElementById('edit-password').value = '';
+  document.getElementById('edit-user-err').textContent = '';
+  document.getElementById('edit-user-title').textContent = `Edit: ${u.full_name || u.username}`;
+  const totpStatus = document.getElementById('edit-totp-status');
+  const totpBtn = document.getElementById('edit-totp-btn');
+  if (u.totp_enabled) {
+    totpStatus.textContent = 'Enabled'; totpStatus.style.color = 'var(--green)';
+    totpBtn.style.display = 'inline-flex';
+  } else {
+    totpStatus.textContent = 'Disabled'; totpStatus.style.color = 'var(--muted)';
+    totpBtn.style.display = 'none';
+  }
+  document.getElementById('modal-edit-user').classList.add('open');
+}
+
+async function adminDisableTotp(){
+  const userId = document.getElementById('edit-user-id').value;
+  const r = await fetch(`${API}/admin/users/${encodeURIComponent(userId)}/disable-totp`, {
+    method: 'POST', credentials: 'include'
+  });
+  const d = await r.json();
+  if (!r.ok) { document.getElementById('edit-user-err').textContent = d.error || 'Error disabling 2FA'; return; }
+  const u = allUsers.find(x => (x.id||x.username) === userId);
+  if (u) u.totp_enabled = false;
+  document.getElementById('edit-totp-status').textContent = 'Disabled';
+  document.getElementById('edit-totp-status').style.color = 'var(--muted)';
+  document.getElementById('edit-totp-btn').style.display = 'none';
+}
+
+async function saveEditUser(){
+  const err = document.getElementById('edit-user-err'); err.textContent = '';
+  const userId = document.getElementById('edit-user-id').value;
+  const body = {
+    full_name: document.getElementById('edit-fullname').value.trim(),
+    username: document.getElementById('edit-username').value.trim()
+  };
+  const pw = document.getElementById('edit-password').value;
+  if (pw) body.password = pw;
+  if (!body.full_name || !body.username) { err.textContent = 'Name and username are required'; return; }
+  const r = await fetch(`${API}/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'PUT', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (!r.ok) { err.textContent = d.error || 'Error saving changes'; return; }
+  closeModal('modal-edit-user');
+  await loadUsers();
+}
+
+function openDeleteUser(userId, name){
+  document.getElementById('delete-user-id').value = userId;
+  document.getElementById('delete-user-name').textContent = name;
+  document.getElementById('delete-user-err').textContent = '';
+  document.getElementById('modal-delete-user').classList.add('open');
+}
+
+async function confirmDeleteUser(){
+  const err = document.getElementById('delete-user-err'); err.textContent = '';
+  const userId = document.getElementById('delete-user-id').value;
+  const r = await fetch(`${API}/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'DELETE', credentials: 'include'
+  });
+  const d = await r.json();
+  if (!r.ok) { err.textContent = d.error || 'Error deleting account'; return; }
+  closeModal('modal-delete-user');
+  await loadUsers();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'}catch(e){}</script>
+<title>Tripartite System — Login</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tripartite">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/shared.css">
+<style>
+.login-header-theme{position:fixed;top:16px;right:16px;display:flex;gap:6px}
+</style>
+</head>
+<body>
+<div class="login-header-theme" id="theme-btns"></div>
+
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <i class="fa-solid fa-solar-panel"></i>
+      <h1>Tripartite System</h1>
+      <p>Apartments · Store · Agriculture</p>
+    </div>
+
+    <div id="login-main">
+      <div class="login-tabs">
+        <button class="ltab active" onclick="switchTab('login',this)">Sign in</button>
+        <button class="ltab" onclick="switchTab('register',this)">Register</button>
+      </div>
+      <div id="ltab-login">
+        <div class="lfield"><label>Username</label><input id="l-user" placeholder="Username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <div class="lfield"><label>Password</label><input id="l-pass" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <button class="login-btn" onclick="doLogin()"><i class="fa-solid fa-right-to-bracket"></i> Sign in</button>
+        <div class="login-err" id="l-err"></div>
+      </div>
+      <div id="ltab-register" style="display:none">
+        <div class="lfield"><label>Full name</label><input id="r-name" placeholder="Your full name"></div>
+        <div class="lfield"><label>Username</label><input id="r-user" placeholder="Choose a username"></div>
+        <div class="lfield"><label>Password</label><input id="r-pass" type="password" placeholder="Choose a password"></div>
+        <button class="login-btn" onclick="doRegister()"><i class="fa-solid fa-user-plus"></i> Create account</button>
+        <div class="login-err" id="r-err"></div>
+      </div>
+    </div>
+
+    <div id="login-totp" style="display:none">
+      <div class="totp-box">
+        <i class="fa-solid fa-shield-halved" style="color:var(--accent);font-size:28px;display:block;margin-bottom:10px"></i>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Enter the 6-digit code from<br><strong>Google Authenticator</strong></p>
+        <input class="totp-input" id="l-totp" type="text" inputmode="numeric" maxlength="6" placeholder="000000" onkeydown="if(event.key==='Enter')doTotpLogin()">
+        <br><br>
+        <button class="login-btn" onclick="doTotpLogin()"><i class="fa-solid fa-check"></i> Verify</button>
+      </div>
+      <div class="login-err" id="l-totp-err"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/motion.js"></script>
+<script src="/shared.js"></script>
+<script>
+buildThemeButtons('theme-btns');
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.ltab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('ltab-login').style.display = name === 'login' ? '' : 'none';
+  document.getElementById('ltab-register').style.display = name === 'register' ? '' : 'none';
+}
+
+async function doLogin() {
+  const user = document.getElementById('l-user').value.trim();
+  const pass = document.getElementById('l-pass').value;
+  document.getElementById('l-err').textContent = '';
+  if (!user || !pass) { document.getElementById('l-err').textContent = 'Please fill all fields'; return; }
+  try {
+    const r = await fetch(`${API}/login`, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify({username:user,password:pass}) });
+    const d = await r.json();
+    if (!r.ok) { document.getElementById('l-err').textContent = d.error || 'Login failed'; return; }
+    if (d.totp_required) {
+      document.getElementById('login-main').style.display = 'none';
+      document.getElementById('login-totp').style.display = '';
+      setTimeout(() => document.getElementById('l-totp').focus(), 100);
+      return;
+    }
+    window.location.href = '/hub.html';
+  } catch(e) { document.getElementById('l-err').textContent = 'Cannot reach server. Is the app running?'; }
+}
+
+async function doTotpLogin() {
+  const code = document.getElementById('l-totp').value.trim();
+  document.getElementById('l-totp-err').textContent = '';
+  const r = await fetch(`${API}/login/totp`, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify({code}) });
+  const d = await r.json();
+  if (!r.ok) { document.getElementById('l-totp-err').textContent = d.error || 'Invalid code'; return; }
+  window.location.href = '/hub.html';
+}
+
+async function doRegister() {
+  const name = document.getElementById('r-name').value.trim();
+  const user = document.getElementById('r-user').value.trim();
+  const pass = document.getElementById('r-pass').value;
+  document.getElementById('r-err').textContent = '';
+  if (!name || !user || !pass) { document.getElementById('r-err').textContent = 'All fields required'; return; }
+  const r = await fetch(`${API}/register`, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify({username:user,password:pass,full_name:name}) });
+  const d = await r.json();
+  if (!r.ok) { document.getElementById('r-err').textContent = d.error || 'Registration failed'; return; }
+  window.location.href = '/hub.html';
+}
+
+// Auto-login if already authenticated
+(async function() {
+  try {
+    const r = await fetch(`${API}/me`, { credentials:'include' });
+    if (r.ok) window.location.href = '/hub.html';
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>

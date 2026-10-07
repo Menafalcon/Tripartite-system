@@ -1,0 +1,571 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('theme')||'light'}catch(e){}</script>
+<title>Store — Tripartite</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tripartite">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/shared.css">
+<style>
+.ai-suggest-btn{width:100%;padding:6px;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:5px}
+.ai-suggest-btn:hover{background:var(--purple);color:#fff}
+.ai-suggest-result{background:var(--purple-bg);border:1px solid var(--purple);border-radius:7px;padding:8px 10px;font-size:12px;color:var(--purple);margin-top:6px;display:none}
+</style>
+</head>
+<body>
+<div class="offline-badge" id="offline-badge"><i class="fa-solid fa-wifi-slash"></i> Offline</div>
+<div class="sync-badge" id="sync-badge" onclick="dataSync()"><i class="fa-solid fa-rotate"></i> Sync now</div>
+<div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <i class="fa-solid fa-store"></i>
+      <span>Store</span>
+      <div class="sb-actions" id="sb-theme-btns"></div>
+    </div>
+    <div class="user-chip" onclick="window.location.href='/profile.html'">
+      <div class="uavatar" id="user-avatar"><i class="fa-solid fa-user" style="font-size:9px"></i></div>
+      <div class="uname" id="user-name">User</div>
+      <button class="logout-btn" onclick="event.stopPropagation();doLogout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+    <div class="nav-back" onclick="window.location.href='/hub.html'"><i class="fa-solid fa-arrow-left"></i> All systems</div>
+    <div class="nav-section">Store</div>
+    <div class="nav-item active" onclick="showView('store-products')" id="nav-store-products"><i class="fa-solid fa-boxes-stacked"></i> Products</div>
+    <div class="nav-item" onclick="showView('store-sales')" id="nav-store-sales"><i class="fa-solid fa-receipt"></i> All Sales</div>
+    <div class="nav-item" onclick="showView('store-installments')" id="nav-store-installments"><i class="fa-solid fa-clock-rotate-left"></i> Installments</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="hamburger" id="hamburger" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></div>
+        <h2 id="page-title">Products</h2>
+      </div>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </div>
+    <div class="content">
+
+      <div id="view-store-products">
+        <div class="toolbar">
+          <div class="search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input id="search-store" placeholder="Search products…" oninput="renderStoreProducts()"></div>
+          <select class="filter-sel" id="filter-store-status" onchange="renderStoreProducts()">
+            <option value="">All</option><option value="for-sale">In stock</option><option value="sold">Sold out</option>
+          </select>
+        </div>
+        <div class="store-grid" id="store-grid"></div>
+      </div>
+
+      <div id="view-store-sales" class="view-hidden"><div id="store-sales-content"></div></div>
+      <div id="view-store-installments" class="view-hidden"><div id="store-installments-content"></div></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Store Item Modal -->
+<div class="overlay" id="modal-store-item">
+  <div class="modal">
+    <div class="modal-head"><h3 id="store-item-modal-title">Add product</h3><button class="close-btn" onclick="closeModal('modal-store-item')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-row full"><label>Product name *</label><input id="si-name" placeholder="e.g. Samsung TV 55'"></div>
+        <div class="form-row full"><label>Description</label><textarea id="si-desc" placeholder="Optional…"></textarea></div>
+        <div class="form-row"><label>Quantity in stock</label><input id="si-qty" type="number" min="0" placeholder="10"></div>
+        <div class="form-row"><label>Buy price (DT)</label><input id="si-buy" type="number" min="0" step="0.1" placeholder="0.00" oninput="clearAiSuggest()"></div>
+        <div class="form-row full">
+          <label>Sell price (DT)</label>
+          <input id="si-sell" type="number" min="0" step="0.1" placeholder="0.00">
+          <button class="ai-suggest-btn" onclick="suggestPrice()" id="ai-suggest-btn">
+            <i class="fa-solid fa-robot"></i> AI Suggest Price
+          </button>
+          <div class="ai-suggest-result" id="ai-suggest-result"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-store-item')">Cancel</button>
+      <button class="btn primary" onclick="saveStoreItem()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sell Modal -->
+<div class="overlay" id="modal-sell">
+  <div class="modal">
+    <div class="modal-head"><h3 id="sell-modal-title">Sell product</h3><button class="close-btn" onclick="closeModal('modal-sell')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div id="sell-product-info" style="background:var(--surface2);border-radius:7px;padding:9px 11px;margin-bottom:13px;font-size:13px"></div>
+      <div class="form-grid">
+        <div class="form-row full"><label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="sell-mini" onchange="toggleMiniSale()"> Quick sale — walk-in customer (no buyer details)</label></div>
+        <div class="form-section sell-buyer">Buyer information</div>
+        <div class="form-row sell-buyer"><label>First name *</label><input id="sell-fname" placeholder="Ahmed"></div>
+        <div class="form-row sell-buyer"><label>Last name *</label><input id="sell-lname" placeholder="Ben Ali"></div>
+        <div class="form-row sell-buyer"><label>CIN</label><input id="sell-cin" placeholder="12345678"></div>
+        <div class="form-row sell-buyer"><label>Phone</label><input id="sell-phone" placeholder="+216 xx xxx xxx"></div>
+        <div class="form-section">Sale details</div>
+        <div class="form-row"><label>Quantity *</label><input id="sell-qty" type="number" min="1" value="1" oninput="updateSellTotal()"></div>
+        <div class="form-row"><label>Discount %</label><input id="sell-discount" type="number" min="0" max="100" value="0" placeholder="0" oninput="updateSellTotal()"></div>
+        <div class="form-row"><label>Amount paid (DT)</label><input id="sell-paid" type="number" min="0" step="0.1" placeholder="0.00" oninput="updateSellTotal()"></div>
+        <div class="form-row full" id="sell-total-display" style="font-size:13px;font-weight:700;color:var(--accent)"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-sell')">Cancel</button>
+      <button class="btn primary" onclick="confirmSell()"><i class="fa-solid fa-cash-register"></i> Confirm sale</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="overlay" id="modal-payment">
+  <div class="modal narrow">
+    <div class="modal-head"><h3>Add payment</h3><button class="close-btn" onclick="closeModal('modal-payment')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div id="payment-info" style="background:var(--surface2);border-radius:7px;padding:9px 11px;margin-bottom:13px;font-size:13px"></div>
+      <div class="form-row"><label>Amount received (DT)</label><input id="pay-amount" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      <div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <label class="form-check" style="cursor:pointer">
+          <input type="checkbox" id="pay-force-complete" style="width:auto;accent-color:var(--accent)">
+          <span style="font-size:13px">Mark as fully paid — waive remaining balance</span>
+        </label>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px;margin-left:22px">Use for family/friend discounts or writing off small amounts</p>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-payment')">Cancel</button>
+      <button class="btn primary" onclick="confirmPayment()"><i class="fa-solid fa-money-bill"></i> Add payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="overlay" id="modal-receipt">
+  <div class="modal narrow">
+    <div class="modal-head"><h3>Upload receipt</h3><button class="close-btn" onclick="closeModal('modal-receipt')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div id="receipt-sale-info" style="background:var(--surface2);border-radius:7px;padding:9px 11px;margin-bottom:13px;font-size:13px"></div>
+      <label class="upload-zone" for="receipt-file-input"><i class="fa-solid fa-receipt"></i><p>Click to upload receipt image or PDF</p></label>
+      <input type="file" id="receipt-file-input" accept="image/*,.pdf" style="display:none" onchange="uploadReceipt(event)">
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('modal-receipt')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- QR Scan Modal -->
+<div class="overlay" id="modal-scan" onclick="if(event.target===this)closeScanModal()">
+  <div class="modal narrow">
+    <div class="modal-head">
+      <h3><i class="fa-solid fa-qrcode"></i> Scan Product QR</h3>
+      <button class="close-btn" onclick="closeScanModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" style="text-align:center;padding:16px">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Point camera at a product barcode to open its sale screen</p>
+      <div class="scan-video-wrap">
+        <video id="scan-video" autoplay playsinline muted></video>
+        <div class="scan-overlay"><div class="scan-frame"></div></div>
+      </div>
+      <canvas id="scan-canvas" style="display:none"></canvas>
+      <div id="scan-status" style="font-size:13px;color:var(--muted);margin-top:10px"><i class="fa-solid fa-spinner fa-spin"></i> Starting camera…</div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeScanModal()">Cancel</button></div>
+  </div>
+</div>
+
+<script src="/motion.js"></script>
+<script src="/shared.js"></script>
+<script>
+let storeItems=[], editStoreItemId=null, sellItemId=null, sellQty={};
+let paymentTarget=null, receiptTarget=null;
+
+const viewTitles={'store-products':'Products','store-sales':'All Sales','store-installments':'Installments'};
+
+(async function init(){
+  setupPWA(); buildThemeButtons('sb-theme-btns');
+  const u = await checkAuth();
+  if (!u) return;
+  if (u.is_superadmin) { window.location.href='/hub.html'; return; }
+  updateUserUI(u);
+  setupOverlayClose();
+  await dataSync();
+  loadStoreItems();
+  showView('store-products');
+  injectAiBubble();
+  document.addEventListener('datachanged', loadStoreItems);
+})();
+
+function showView(name){
+  document.querySelectorAll('[id^="view-"]').forEach(el=>el.classList.add('view-hidden'));
+  document.getElementById('view-'+name)?.classList.remove('view-hidden');
+  document.getElementById('page-title').textContent=viewTitles[name]||name;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('nav-'+name)?.classList.add('active');
+  document.getElementById('topbar-actions').innerHTML=name==='store-products'?`<button class="btn sm" onclick="openScanModal()"><i class="fa-solid fa-camera"></i> Scan</button><button class="btn primary sm" onclick="openStoreItemModal()"><i class="fa-solid fa-plus"></i> Add</button>`:'';
+  closeSidebar();
+  if(name==='store-sales') renderStoreSales();
+  if(name==='store-installments') renderStoreInstallments();
+  if(name==='store-products') renderStoreProducts();
+}
+
+function loadStoreItems(){
+  storeItems = dataGet('store');
+  renderStoreProducts(); renderStoreSales(); renderStoreInstallments();
+  checkStoreNotifs(storeItems);
+}
+
+function renderStoreProducts(){
+  const q=document.getElementById('search-store')?.value?.toLowerCase()||'';
+  const st=document.getElementById('filter-store-status')?.value||'';
+  const list=storeItems.filter(item=>{
+    const m=item.name.toLowerCase().includes(q)||(item.description||'').toLowerCase().includes(q);
+    const sm=!st||(st==='for-sale'&&item.quantity>0)||(st==='sold'&&item.quantity===0);
+    return m&&sm;
+  });
+  const grid=document.getElementById('store-grid'); if(!grid) return;
+  if(list.length===0){grid.innerHTML=`<div style="grid-column:1/-1"><div class="empty-state"><i class="fa-solid fa-boxes-stacked"></i><p>No products. Add one!</p></div></div>`;return;}
+  if(!sellQty) sellQty={};
+  list.forEach(item=>{if(!sellQty[item.id]) sellQty[item.id]=1;});
+  grid.innerHTML=list.map(item=>{
+    const imgSrc=item.image?`${API}/store/images/${item.image}`:null;
+    const inStock=item.quantity>0;
+    const soldCount=(item.sales||[]).reduce((s,x)=>s+x.quantity,0);
+    const dotClass=item.quantity===0?'dot-green':item.quantity<5?'dot-amber':'dot-red';
+    const dotLabel=item.quantity===0?'Sold out':item.quantity<5?'Low stock':'In stock';
+    return `<div class="store-card">
+      <div class="store-img">
+        ${imgSrc?`<img src="${imgSrc}" alt="${escHtml(item.name)}" id="simg-${item.id}">`:`<i class="fa-solid fa-box-open"></i>`}
+        ${imgSrc?`<button class="store-img-zoom" onclick="toggleStoreImgZoom(${item.id},this)"><i class="fa-solid fa-magnifying-glass"></i> Zoom</button>`:''}
+        <label class="store-img-upload"><i class="fa-solid fa-camera"></i>&nbsp;Change photo<input type="file" accept="image/*" style="display:none" onchange="uploadItemImage(event,${item.id})"></label>
+      </div>
+      <div class="store-info">
+        <div class="store-name">${escHtml(item.name)}</div>
+        <div class="store-desc">${escHtml(item.description||'—')}</div>
+        <div class="store-prices"><span class="store-sell-price">${(item.sell_price||0).toFixed(2)} DT</span><span class="store-buy-price">Cost: ${(item.buy_price||0).toFixed(2)} DT</span></div>
+        <div class="store-stock"><span class="status-dot ${dotClass}"></span><span style="font-size:11px;color:var(--muted)">${dotLabel}</span><span style="font-size:13px;font-weight:700;margin-left:auto;color:var(--text)">${item.quantity} left</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="qty-ctrl" style="${!inStock?'opacity:.4':''}">
+            <button class="qty-btn" onclick="changeQty(${item.id},-1)" ${!inStock?'disabled':''}>−</button>
+            <span class="qty-val" id="qty-${item.id}">${sellQty[item.id]||1}</span>
+            <button class="qty-btn" onclick="changeQty(${item.id},1,${item.quantity})" ${!inStock?'disabled':''}>+</button>
+          </div>
+          <span style="font-size:11px;color:var(--muted)">${soldCount} sold total</span>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button class="sell-btn" style="flex:1" onclick="openSellModal(${item.id})" ${!inStock?'disabled':''}><i class="fa-solid fa-cash-register"></i> Sell</button>
+          <button class="icon-btn" onclick="printBarcode(${item.id},'${escHtml(item.name).replace(/'/g,"\\'")}',${item.sell_price||0})" title="Print Barcode"><i class="fa-solid fa-barcode"></i></button>
+          <button class="icon-btn" onclick="openStoreItemModal(${item.id})"><i class="fa-solid fa-pen"></i></button>
+          <button class="icon-btn del" onclick="deleteStoreItem(${item.id})"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleStoreImgZoom(itemId,btn){
+  const img=document.getElementById('simg-'+itemId); if(!img) return;
+  const zoomed=img.classList.toggle('zoomed');
+  btn.innerHTML=zoomed?'<i class="fa-solid fa-magnifying-glass-minus"></i> Fit':'<i class="fa-solid fa-magnifying-glass"></i> Zoom';
+}
+
+function changeQty(itemId,delta,max){
+  if(!sellQty) sellQty={}; const cur=sellQty[itemId]||1; let nv=Math.max(1,cur+delta);
+  sellQty[itemId]=max!==undefined?Math.min(nv,max):nv;
+  const el=document.getElementById(`qty-${itemId}`); if(el) el.textContent=sellQty[itemId];
+}
+
+function openStoreItemModal(id){
+  editStoreItemId=id||null;
+  document.getElementById('ai-suggest-result').style.display='none';
+  if(id){
+    const item=storeItems.find(x=>x.id===id)||{};
+    document.getElementById('si-name').value=item.name||''; document.getElementById('si-desc').value=item.description||'';
+    document.getElementById('si-qty').value=item.quantity||''; document.getElementById('si-buy').value=item.buy_price||'';
+    document.getElementById('si-sell').value=item.sell_price||'';
+    document.getElementById('store-item-modal-title').textContent='Edit product';
+  } else {
+    ['si-name','si-desc','si-qty','si-buy','si-sell'].forEach(f=>document.getElementById(f).value='');
+    document.getElementById('store-item-modal-title').textContent='Add product';
+  }
+  document.getElementById('modal-store-item').classList.add('open');
+}
+
+function clearAiSuggest(){
+  document.getElementById('ai-suggest-result').style.display='none';
+}
+
+async function suggestPrice(){
+  const nimKey=getNimApiKey();
+  const resultEl=document.getElementById('ai-suggest-result');
+  const btn=document.getElementById('ai-suggest-btn');
+  if(!nimKey){
+    resultEl.style.display='block';
+    resultEl.innerHTML='<i class="fa-solid fa-key"></i> Set your NVIDIA NIM API key in <a href="/profile.html" style="color:inherit;font-weight:700">Profile</a> first.';
+    return;
+  }
+  const name=document.getElementById('si-name').value.trim();
+  const buyPrice=parseFloat(document.getElementById('si-buy').value)||0;
+  if(!name){alert('Enter the product name first.');return;}
+  btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Thinking…';
+  btn.disabled=true;
+  const existingPrices=storeItems.slice(0,10).map(i=>`${i.name}: buy ${i.buy_price} DT, sell ${i.sell_price} DT`).join('\n');
+  const prompt=`You are a store pricing assistant. Here are existing products for context:\n${existingPrices||'No products yet.'}\n\nSuggest a sell price in DT for: "${name}" (buy price: ${buyPrice} DT).\nReply with ONLY a single number (the suggested sell price), nothing else. No currency symbol, no explanation.`;
+  try{
+    const r=await fetch(`${API}/ai/chat`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:prompt}],api_key:nimKey})});
+    const d=await r.json();
+    if(!r.ok||d.error){resultEl.innerHTML=`⚠ ${d.error||'AI error'}`; resultEl.style.display='block'; return;}
+    const suggested=parseFloat(d.reply?.trim());
+    if(!isNaN(suggested)&&suggested>0){
+      resultEl.innerHTML=`<i class="fa-solid fa-robot"></i> AI suggests: <strong>${suggested.toFixed(2)} DT</strong> <button class="btn xs primary" style="margin-left:8px" onclick="document.getElementById('si-sell').value='${suggested.toFixed(2)}';document.getElementById('ai-suggest-result').style.display='none'">Use this</button>`;
+    } else {
+      resultEl.innerHTML=`<i class="fa-solid fa-robot"></i> AI response: <em>${escHtml(d.reply||'')}</em>`;
+    }
+    resultEl.style.display='block';
+  }catch(e){
+    resultEl.innerHTML='⚠ Could not reach AI.'; resultEl.style.display='block';
+  } finally {
+    btn.innerHTML='<i class="fa-solid fa-robot"></i> AI Suggest Price'; btn.disabled=false;
+  }
+}
+
+async function saveStoreItem(){
+  const d={name:document.getElementById('si-name').value.trim(),description:document.getElementById('si-desc').value.trim(),quantity:parseInt(document.getElementById('si-qty').value)||0,buy_price:parseFloat(document.getElementById('si-buy').value)||0,sell_price:parseFloat(document.getElementById('si-sell').value)||0};
+  if(!d.name){alert('Product name required.');return;}
+  if(editStoreItemId) await dataUpdate('store', editStoreItemId, d);
+  else await dataCreate('store', d);
+  closeModal('modal-store-item'); loadStoreItems();
+}
+
+async function deleteStoreItem(id){
+  if(!confirm('Delete this product?')) return;
+  await dataDelete('store', id); loadStoreItems();
+}
+
+async function uploadItemImage(e,itemId){
+  const file=e.target.files[0]; if(!file) return;
+  if(!navigator.onLine){alert('Adding a photo needs an internet connection.');return;}
+  const fd=new FormData(); fd.append('file',file);
+  await fetch(`${API}/store/items/${itemId}/image`,{method:'POST',credentials:'include',body:fd});
+  await dataSync(); loadStoreItems();
+}
+
+function openSellModal(itemId){
+  sellItemId=itemId; const item=storeItems.find(x=>x.id===itemId); if(!item) return;
+  const qty=sellQty[itemId]||1;
+  document.getElementById('sell-modal-title').textContent=`Sell: ${item.name}`;
+  document.getElementById('sell-product-info').innerHTML=`<strong>${escHtml(item.name)}</strong> — Sell price: <strong>${item.sell_price.toFixed(2)} DT</strong> · Stock: <strong>${item.quantity}</strong>`;
+  ['sell-fname','sell-lname','sell-cin','sell-phone'].forEach(f=>document.getElementById(f).value='');
+  document.getElementById('sell-qty').value=qty;
+  document.getElementById('sell-discount').value='0';
+  document.getElementById('sell-paid').value='';
+  document.getElementById('sell-total-display').innerHTML='';
+  document.getElementById('sell-mini').checked = localStorage.getItem('tri_sell_mini')==='1';
+  toggleMiniSale();
+  updateSellTotal();
+  document.getElementById('modal-sell').classList.add('open');
+}
+
+function toggleMiniSale(){
+  const mini=document.getElementById('sell-mini').checked;
+  localStorage.setItem('tri_sell_mini', mini?'1':'0');
+  document.querySelectorAll('#modal-sell .sell-buyer').forEach(el=>el.style.display=mini?'none':'');
+}
+
+function updateSellTotal(){
+  const item=storeItems.find(x=>x.id===sellItemId); if(!item) return;
+  const qty=parseInt(document.getElementById('sell-qty').value)||1;
+  const discount=Math.min(100,Math.max(0,parseFloat(document.getElementById('sell-discount').value)||0));
+  const paid=parseFloat(document.getElementById('sell-paid').value)||0;
+  const base=item.sell_price*qty;
+  const discAmt=base*(discount/100);
+  const total=base-discAmt;
+  const rem=Math.max(0,total-paid);
+  const status=paid>=total?'<span class="badge sold">Paid ✓</span>':'<span class="badge installments">Installments</span>';
+  const discLine=discount>0?` <span style="color:var(--green);font-size:11px">(−${discAmt.toFixed(2)} DT ${discount}% off)</span>`:'';
+  document.getElementById('sell-total-display').innerHTML=`Total: <strong>${total.toFixed(2)} DT</strong>${discLine} · Paid: <strong>${paid.toFixed(2)} DT</strong> · Remaining: <strong style="color:var(--amber)">${rem.toFixed(2)} DT</strong> ${status}`;
+}
+
+async function confirmSell(){
+  const mini=document.getElementById('sell-mini').checked;
+  const fname=document.getElementById('sell-fname').value.trim(), lname=document.getElementById('sell-lname').value.trim();
+  if(!mini && (!fname||!lname)){alert('Buyer name required — or tick "Quick sale" for a walk-in.');return;}
+  const d={
+    buyer_fname:mini?'':fname, buyer_lname:mini?'':lname,
+    buyer_cin:mini?'':document.getElementById('sell-cin').value.trim(),
+    buyer_phone:mini?'':document.getElementById('sell-phone').value.trim(),
+    quick:mini,
+    quantity:parseInt(document.getElementById('sell-qty').value)||1,
+    amount_paid:parseFloat(document.getElementById('sell-paid').value)||0,
+    discount_pct:Math.min(100,Math.max(0,parseFloat(document.getElementById('sell-discount').value)||0))
+  };
+  const res=await dataSell(sellItemId, d);
+  if(!res.ok){alert(res.error||'Error');return;}
+  closeModal('modal-sell'); loadStoreItems();
+}
+
+function renderStoreSales(){
+  const container=document.getElementById('store-sales-content');
+  const all=[]; storeItems.forEach(item=>(item.sales||[]).forEach(s=>all.push({...s,item_name:item.name,item_id:item.id})));
+  all.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(all.length===0){container.innerHTML='<div class="empty-state"><i class="fa-solid fa-receipt"></i><p>No sales yet</p></div>';return;}
+  container.innerHTML=`<div class="tbl-card"><table><thead><tr><th>Product</th><th>Buyer</th><th>Qty</th><th>Total</th><th>Paid</th><th>Remaining</th><th>Status</th><th>Date</th><th>Receipt</th></tr></thead><tbody>${all.map(s=>`<tr>
+    <td><strong>${escHtml(s.item_name)}</strong></td>
+    <td>${(s.quick||!((s.buyer_fname||'')+(s.buyer_lname||'')).trim())?'<span style="color:var(--muted)"><i class="fa-solid fa-bolt"></i> Quick sale</span>':escHtml(s.buyer_fname+' '+s.buyer_lname)+'<br><small style="color:var(--muted)">'+escHtml((s.buyer_cin||'—')+' · '+(s.buyer_phone||'—'))+'</small>'}</td>
+    <td>${s.quantity}</td><td>${s.total_price.toFixed(2)} DT</td>
+    <td class="v-green">${s.amount_paid.toFixed(2)} DT</td>
+    <td class="${s.remaining>0?'v-amber':''}">${s.remaining.toFixed(2)} DT</td>
+    <td>${badgeHtml(s.status)}</td>
+    <td>${s.date.split('T')[0]}</td>
+    <td>${s.receipt?`<img src="${API}/receipts/${s.receipt}" class="receipt-thumb" onclick="window.open('${API}/receipts/${s.receipt}','_blank')">`:`<button class="btn xs" onclick="openReceiptModal(${s.item_id},'${s.id}','${escHtml(s.buyer_fname)} ${escHtml(s.buyer_lname)}')"><i class="fa-solid fa-upload"></i></button>`}</td>
+  </tr>`).join('')}</tbody></table></div>`;
+}
+
+function renderStoreInstallments(){
+  const container=document.getElementById('store-installments-content');
+  const installs=[]; storeItems.forEach(item=>(item.sales||[]).filter(s=>s.status==='installments').forEach(s=>installs.push({...s,item_name:item.name,item_id:item.id})));
+  if(installs.length===0){container.innerHTML='<div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i><p>No pending installments</p></div>';return;}
+  container.innerHTML=`<div style="margin-bottom:10px;font-size:13px;color:var(--muted)">${installs.length} pending</div>`+installs.map(s=>`
+    <div class="sale-row">
+      <div class="status-dot dot-amber"></div>
+      <div style="flex:1">
+        <div class="sale-buyer">${(s.quick||!((s.buyer_fname||'')+(s.buyer_lname||'')).trim())?'<i class="fa-solid fa-bolt"></i> Quick sale':escHtml(s.buyer_fname+' '+s.buyer_lname)} <span style="font-weight:400;color:var(--muted)">— ${escHtml(s.item_name)}</span></div>
+        <div class="sale-meta">${(s.quick||!((s.buyer_fname||'')+(s.buyer_lname||'')).trim())?'walk-in':escHtml((s.buyer_cin||'—')+' · '+(s.buyer_phone||'—'))} · ${s.date.split('T')[0]}</div>
+        <div class="payment-history">Payments: ${(s.payments||[]).map(p=>`${p.amount.toFixed(2)} DT on ${p.date.split('T')[0]}`).join(' → ')||'None yet'}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="sale-amount">${s.amount_paid.toFixed(2)} / ${s.total_price.toFixed(2)} DT</div>
+        <div class="sale-remaining">Remaining: ${s.remaining.toFixed(2)} DT</div>
+        <div style="display:flex;gap:5px;margin-top:5px;justify-content:flex-end">
+          <button class="btn xs primary" onclick="openPaymentModal(${s.item_id},'${s.id}',${s.remaining})"><i class="fa-solid fa-money-bill"></i> Pay</button>
+          ${s.receipt?`<img src="${API}/receipts/${s.receipt}" class="receipt-thumb" onclick="window.open('${API}/receipts/${s.receipt}','_blank')">`:`<button class="btn xs" onclick="openReceiptModal(${s.item_id},'${s.id}','${escHtml(s.buyer_fname)} ${escHtml(s.buyer_lname)}')"><i class="fa-solid fa-receipt"></i></button>`}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openPaymentModal(itemId,saleId,remaining){
+  paymentTarget={itemId,saleId};
+  document.getElementById('payment-info').innerHTML=`Remaining: <strong style="color:var(--amber)">${remaining.toFixed(2)} DT</strong>`;
+  document.getElementById('pay-amount').value='';
+  document.getElementById('pay-force-complete').checked=false;
+  document.getElementById('modal-payment').classList.add('open');
+}
+
+async function confirmPayment(){
+  if(!paymentTarget) return;
+  const amount=parseFloat(document.getElementById('pay-amount').value)||0;
+  const forceComplete=document.getElementById('pay-force-complete').checked;
+  if(amount<=0&&!forceComplete){alert('Enter a payment amount, or check "waive remaining balance".');return;}
+  if(amount<=0&&forceComplete&&!confirm('Waive the remaining balance with no payment?')) return;
+  if(!navigator.onLine){alert('Recording a payment needs an internet connection.');return;}
+  await fetch(`${API}/store/sales/${paymentTarget.itemId}/${paymentTarget.saleId}/payment`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({amount,force_complete:forceComplete})});
+  closeModal('modal-payment'); await dataSync(); loadStoreItems();
+}
+
+function openReceiptModal(itemId,saleId,buyerName){
+  receiptTarget={itemId,saleId};
+  document.getElementById('receipt-sale-info').innerHTML=`Sale to <strong>${escHtml(buyerName)}</strong>`;
+  document.getElementById('receipt-file-input').value='';
+  document.getElementById('modal-receipt').classList.add('open');
+}
+
+async function uploadReceipt(e){
+  const file=e.target.files[0]; if(!file||!receiptTarget) return;
+  if(!navigator.onLine){alert('Uploading a receipt needs an internet connection.');return;}
+  const fd=new FormData(); fd.append('file',file);
+  const r=await fetch(`${API}/store/sales/${receiptTarget.itemId}/${receiptTarget.saleId}/receipt`,{method:'POST',credentials:'include',body:fd});
+  if(r.ok){closeModal('modal-receipt'); await dataSync(); loadStoreItems();}
+}
+
+// ── QR SCAN ───────────────────────────────────────────────────────────────────
+let scanStream=null, scanRaf=null, scanActive=false;
+
+async function openScanModal(){
+  document.getElementById('modal-scan').classList.add('open');
+  const status=document.getElementById('scan-status');
+  status.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Starting camera…';
+  scanActive=true;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    status.innerHTML='<i class="fa-solid fa-circle-exclamation" style="color:var(--red)"></i> Camera requires a secure connection (HTTPS).<br><small>When testing on WiFi via HTTP, camera is blocked by the browser. Access the app from the same device as the server, or set up HTTPS.</small>';
+    return;
+  }
+  try{
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}});
+    const video=document.getElementById('scan-video');
+    video.srcObject=scanStream;
+    await video.play();
+    status.innerHTML='<i class="fa-solid fa-camera"></i> Scanning… point at a product barcode';
+    scanRaf=requestAnimationFrame(scanFrame);
+  }catch(e){
+    status.innerHTML='<i class="fa-solid fa-circle-exclamation" style="color:var(--red)"></i> Camera error: '+escHtml(e.message);
+    if(e.name==='NotAllowedError') status.innerHTML+='<br><small>Please allow camera access in your browser settings.</small>';
+  }
+}
+
+let _barcodeDetector=null;
+async function _getDetector(){
+  if(_barcodeDetector) return _barcodeDetector;
+  if(!('BarcodeDetector' in window)) return null;
+  const supported=await BarcodeDetector.getSupportedFormats().catch(()=>['code_128']);
+  const want=['code_128','code_39','ean_13','ean_8','upc_a','upc_e','itf'];
+  const formats=want.filter(f=>supported.includes(f));
+  _barcodeDetector=new BarcodeDetector({formats:formats.length?formats:['code_128']});
+  return _barcodeDetector;
+}
+
+function scanFrame(){
+  if(!scanActive) return;
+  const video=document.getElementById('scan-video');
+  const canvas=document.getElementById('scan-canvas');
+  if(!video||!canvas||!scanStream){return;}
+  if(video.readyState<2){scanRaf=requestAnimationFrame(scanFrame);return;}
+  canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(video,0,0);
+  _getDetector().then(detector=>{
+    if(!detector){
+      document.getElementById('scan-status').innerHTML='<i class="fa-solid fa-triangle-exclamation" style="color:var(--amber)"></i> Barcode scanner not supported on this browser. Use Chrome on Android.';
+      return;
+    }
+    detector.detect(canvas).then(barcodes=>{
+      if(!scanActive) return;
+      if(barcodes.length>0) handleScannedBarcode(barcodes[0].rawValue);
+      else scanRaf=requestAnimationFrame(scanFrame);
+    }).catch(()=>{ scanRaf=requestAnimationFrame(scanFrame); });
+  });
+}
+
+function handleScannedBarcode(value){
+  scanActive=false;
+  const id=parseInt(value,10);
+  if(!id){
+    document.getElementById('scan-status').innerHTML='<i class="fa-solid fa-triangle-exclamation" style="color:var(--amber)"></i> Not a product barcode. Try again.';
+    scanActive=true; scanRaf=requestAnimationFrame(scanFrame); return;
+  }
+  const item=storeItems.find(x=>x.id===id);
+  closeScanModal();
+  if(item){
+    if(item.quantity>0) openSellModal(item.id);
+    else { showView('store-products'); setTimeout(()=>alert(`"${item.name}" is out of stock.`),200); }
+  } else {
+    alert('Product not found in your inventory (ID: '+id+'). It may have been deleted.');
+  }
+}
+
+function closeScanModal(){
+  scanActive=false;
+  if(scanStream){scanStream.getTracks().forEach(t=>t.stop()); scanStream=null;}
+  if(scanRaf){cancelAnimationFrame(scanRaf); scanRaf=null;}
+  closeModal('modal-scan');
+  const video=document.getElementById('scan-video');
+  if(video) video.srcObject=null;
+}
+</script>
+</body>
+</html>

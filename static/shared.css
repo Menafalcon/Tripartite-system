@@ -1,0 +1,686 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   TRIPARTITE — DESIGN FOUNDATIONS
+   Apple-style interface design translated for the web.
+   Derived from WWDC "Designing Fluid Interfaces" / "The Details of UI Typography".
+
+   Organised in the skill's own order: response -> manipulation -> springs ->
+   materials -> typography -> reduced motion -> the eight principles.
+
+   Class names and CSS variables are unchanged from the previous stylesheet, so
+   every existing page keeps working; what changed is the craft underneath.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+/* ── 1. FOUNDATIONS: tokens ─────────────────────────────────────────────────── */
+
+:root{
+  /* Colour — light */
+  --bg:#f2f3f7;--surface:#fff;--surface2:#f3f4f6;--border:#e2e4e9;--border2:#c8cbd4;
+  --text:#1a1c23;--text2:#374151;--muted:#6b7280;--accent:#2563eb;--accent-light:#eff6ff;
+  --green:#16a34a;--green-bg:#f0fdf4;--red:#dc2626;--red-bg:#fef2f2;
+  --amber:#d97706;--amber-bg:#fffbeb;--purple:#7c3aed;--purple-bg:#f5f3ff;
+
+  /* Translucent materials (§12). Material *weight* encodes hierarchy: the
+     sidebar is a heavier material than a floating toolbar, and a floating
+     toolbar is heavier than an inline chip. */
+  --chrome-bg:rgba(255,255,255,.72);      /* nav / sidebars / topbars */
+  --chrome-bg-strong:rgba(255,255,255,.86);/* sheets / modals / popovers */
+  --chrome-edge:rgba(255,255,255,.6);     /* bright top edge: light on the material */
+  --chrome-border:rgba(0,0,0,.07);
+  --scrim:rgba(12,14,22,.42);
+  --blur-chrome:blur(22px) saturate(180%);
+  --blur-strong:blur(30px) saturate(190%);
+
+  /* Shape & depth */
+  --radius:13px;--radius-sm:8px;--radius-lg:18px;
+  --shadow:0 1px 4px rgba(0,0,0,.07);
+  --shadow2:0 8px 32px rgba(16,20,40,.16),0 2px 8px rgba(16,20,40,.08);
+  --sidebar-w:285px;
+
+  /* Motion (§4). Springs, expressed where CSS can reach them: a critically
+     damped settle reads as an ease-out with no overshoot. Gesture-driven motion
+     is handed to motion.js, which is genuinely interruptible. */
+  --ease-spring:cubic-bezier(.32,.72,0,1);      /* settle, no overshoot */
+  --ease-spring-out:cubic-bezier(.4,0,.2,1);    /* symmetric exit */
+  --dur-press:110ms;
+  --dur-fast:180ms;
+  --dur-med:280ms;
+  --dur-slow:420ms;
+
+  /* Typography (§15). Size-specific tracking: large text reads too loose and
+     wants negative tracking; small text wants a little positive. */
+  --track-display:-.022em;
+  --track-title:-.014em;
+  --track-body:0em;
+  --track-label:.06em;
+
+  /* Fluid type scale — respects the user's text-size setting because the root
+     size is the browser's own 100%, and headings scale with the viewport. */
+  --fs-display:clamp(1.55rem,1.2rem + 1.6vw,2.1rem);
+  --fs-title:clamp(1.15rem,1.05rem + .5vw,1.4rem);
+  --fs-heading:.95rem;
+  --fs-body:.95rem;
+  --fs-small:.8rem;
+  --fs-label:.68rem;
+
+  --tap-target:44px;   /* §10 — comfortable hit area */
+}
+
+[data-theme="dark"]{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#242736;--border:#2d3147;--border2:#404563;
+  --text:#e8eaf0;--text2:#c5c9d8;--muted:#7b82a0;--accent:#4f8ef7;--accent-light:#1a2547;
+  --green:#22c55e;--green-bg:#052e16;--red:#f87171;--red-bg:#2d0a0a;
+  --amber:#fbbf24;--amber-bg:#2d1f00;--purple:#a78bfa;--purple-bg:#1e1040;
+  /* Dark materials are heavier and dimmer; the edge highlight is subtler
+     because less light catches a dark surface. */
+  --chrome-bg:rgba(26,29,39,.72);
+  --chrome-bg-strong:rgba(26,29,39,.88);
+  --chrome-edge:rgba(255,255,255,.07);
+  --chrome-border:rgba(255,255,255,.08);
+  --scrim:rgba(0,0,0,.58);
+  --shadow:0 1px 4px rgba(0,0,0,.4);
+  --shadow2:0 10px 36px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);
+}
+
+/* ── 2. TYPOGRAPHY (§15) ────────────────────────────────────────────────────── */
+
+html{
+  overflow-x:hidden;
+  /* Default to the platform system font — it already ships optical sizing,
+     tracking tables and legibility tuning. */
+  font:100%/1.5 -apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,sans-serif;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+
+body{
+  font-family:inherit;
+  background:var(--bg);color:var(--text);
+  font-size:var(--fs-body);
+  /* Leading tracks size inversely: looser here for comfortable body copy. */
+  line-height:1.5;
+  letter-spacing:var(--track-body);
+  min-height:100vh;
+  transition:background var(--dur-med) var(--ease-spring-out),color var(--dur-med) var(--ease-spring-out);
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+body:has(.overlay.open){overflow:hidden}
+
+/* Hierarchy comes from weight + size + leading as a set, not size alone.
+   Tracking is part of the set: every heading tightens as it grows (§15). */
+h1,h2,h3,h4{letter-spacing:var(--track-title);line-height:1.22;font-weight:700}
+h1{font-size:var(--fs-title)}
+h4{font-size:var(--fs-heading)}
+
+button{font-family:inherit;cursor:pointer}
+a{color:inherit;text-decoration:none}
+input,select,textarea{font-family:inherit}
+
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+
+/* ── 3. RESPONSE (§1) — feedback on pointer-down, never only at the end ─────── */
+
+/* Every pressable surface responds the instant it is pressed. `:active` fires on
+   pointer-down, so the highlight appears before the tap resolves — waiting for
+   `click`/touch-up to show feedback is what makes an interface feel dead. */
+.btn,.icon-btn,.nav-item,.qty-btn,.theme-btn,.close-btn,.sell-btn,
+.hub-card,.store-card,.logout-btn,.ptab,.ltab,.back-btn,.user-chip,.hub-user{
+  transition:transform var(--dur-press) var(--ease-spring),
+             background var(--dur-fast) var(--ease-spring-out),
+             border-color var(--dur-fast) var(--ease-spring-out),
+             color var(--dur-fast) var(--ease-spring-out),
+             box-shadow var(--dur-fast) var(--ease-spring-out),
+             opacity var(--dur-fast) var(--ease-spring-out);
+  /* Kills the ~300ms tap delay so feedback is genuinely instant. */
+  touch-action:manipulation;
+}
+.btn:active,.icon-btn:active,.nav-item:active,.qty-btn:active,.theme-btn:active,
+.close-btn:active,.logout-btn:active,.back-btn:active,.ptab:active,.ltab:active{transform:scale(.96)}
+.sell-btn:active,.login-btn:active,.hub-card:active,.store-card:active,.user-chip:active,.hub-user:active{transform:scale(.98)}
+
+/* ── 4. BUTTONS ─────────────────────────────────────────────────────────────── */
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:7px;font-size:.87rem;font-weight:500;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 1px 2px rgba(37,99,235,.25)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--red)}
+.btn.danger:hover{background:var(--red-bg);border-color:var(--red)}
+.btn.success{background:var(--green);color:#fff;border-color:var(--green)}
+.btn.amber{background:var(--amber);color:#fff;border-color:var(--amber)}
+.btn.sm{padding:4px 9px;font-size:var(--fs-small)}
+.btn.xs{padding:2px 6px;font-size:.73rem}
+.icon-btn{width:26px;height:26px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.73rem}
+.icon-btn:hover{background:var(--surface2);color:var(--text)}
+.icon-btn.del:hover{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+
+/* ── 5. MATERIALS & DEPTH (§12) — translucent chrome, not opaque strips ─────── */
+
+/* Nav, topbars and sheets become floating functional layers with content
+   scrolling underneath, instead of opaque bars that consume a fixed strip. */
+.sidebar,.topbar,.hub-header,.modal,.ai-bubble-panel,.toast,.login-card{
+  background:var(--chrome-bg);
+  -webkit-backdrop-filter:var(--blur-chrome);
+  backdrop-filter:var(--blur-chrome);
+}
+.modal,.ai-bubble-panel{background:var(--chrome-bg-strong);-webkit-backdrop-filter:var(--blur-strong);backdrop-filter:var(--blur-strong)}
+
+/* A bright top edge reads as light catching the material. */
+.topbar,.hub-header{border-bottom:1px solid var(--chrome-border);box-shadow:inset 0 1px 0 var(--chrome-edge)}
+.sidebar{border-right:1px solid var(--chrome-border);box-shadow:inset -1px 0 0 var(--chrome-edge)}
+
+/* Scroll edge effect: instead of a hard divider, fade a mask where content
+   meets floating chrome — and only while content is actually scrolled under. */
+.topbar,.hub-header{position:relative}
+.topbar::after,.hub-header::after{
+  content:'';position:absolute;left:0;right:0;top:100%;height:14px;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(0,0,0,.055),transparent);
+  opacity:0;transition:opacity var(--dur-med) var(--ease-spring-out);
+}
+[data-theme="dark"] .topbar::after,[data-theme="dark"] .hub-header::after{
+  background:linear-gradient(to bottom,rgba(0,0,0,.35),transparent);
+}
+.is-scrolled .topbar::after,.is-scrolled .hub-header::after{opacity:1}
+
+/* Scrim: a modal pairs its surface with a dimming layer so the background
+   recedes, making the modal read as closer to the viewer. */
+.overlay{background:var(--scrim);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+
+/* Vibrancy: over a translucent surface, flat grey text loses legibility — use
+   higher contrast and a touch more weight. */
+.sidebar .nav-item{font-weight:500}
+
+/* ── 6. MODAL ───────────────────────────────────────────────────────────────── */
+
+.overlay{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;padding:16px}
+.overlay.open{display:flex}
+/* Entry/exit motion is owned by motion.js (transform + opacity springs) so the
+   sheet can be grabbed and reversed mid-flight. No CSS animation here. */
+.modal{background:var(--surface);border-radius:var(--radius-lg);width:580px;max-width:100%;max-height:94vh;overflow-y:auto;box-shadow:var(--shadow2);border:1px solid var(--chrome-border);will-change:transform,opacity}
+.modal.wide{width:720px}.modal.narrow{width:400px}
+.modal-head{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--chrome-bg-strong);-webkit-backdrop-filter:var(--blur-chrome);backdrop-filter:var(--blur-chrome);z-index:1;border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+.modal-head h3{font-size:var(--fs-heading);font-weight:700}
+.modal-body{padding:16px 20px}
+.modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:7px;position:sticky;bottom:0;background:var(--chrome-bg-strong);-webkit-backdrop-filter:var(--blur-chrome);backdrop-filter:var(--blur-chrome);border-radius:0 0 var(--radius-lg) var(--radius-lg)}
+.close-btn{width:28px;height:28px;border:none;background:none;font-size:1rem;color:var(--muted);cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.close-btn:hover{background:var(--surface2);color:var(--text)}
+
+/* ── 7. FORMS ───────────────────────────────────────────────────────────────── */
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row{display:flex;flex-direction:column}
+.form-row.full{grid-column:1/-1}
+/* Labels are small text: slightly positive tracking aids legibility. */
+.form-row label{display:block;font-size:var(--fs-label);font-weight:600;margin-bottom:4px;color:var(--text2);letter-spacing:var(--track-label);text-transform:uppercase}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:var(--fs-body);font-family:inherit;outline:none;background:var(--surface);color:var(--text);transition:border-color var(--dur-fast) var(--ease-spring-out),box-shadow var(--dur-fast) var(--ease-spring-out)}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,142,247,.14)}
+.form-row textarea{resize:vertical;min-height:56px}
+.form-section{font-size:var(--fs-label);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-label);margin:10px 0 7px;padding-top:9px;border-top:1px solid var(--border);grid-column:1/-1}
+.form-check{display:flex;align-items:center;gap:7px;font-size:var(--fs-body)}
+.form-check input{width:auto;cursor:pointer}
+
+/* ── 8. COMMON COMPONENTS ───────────────────────────────────────────────────── */
+
+.metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;margin-bottom:20px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow)}
+.metric .label{font-size:var(--fs-label);color:var(--muted);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:var(--track-label)}
+/* Numbers are the largest type on the screen: negative tracking keeps digits
+   from reading too far apart at display sizes. */
+.metric .value{font-size:1.3rem;font-weight:800;letter-spacing:var(--track-title);font-variant-numeric:tabular-nums}
+.metric .sub{font-size:var(--fs-label);color:var(--muted);margin-top:2px}
+.v-green{color:var(--green)}.v-red{color:var(--red)}.v-amber{color:var(--amber)}.v-blue{color:var(--accent)}.v-purple{color:var(--purple)}
+
+.toolbar{display:flex;gap:7px;margin-bottom:13px;align-items:center;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;max-width:280px}
+.search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:var(--fs-small)}
+.search-wrap input{width:100%;padding:7px 9px 7px 28px;border:1px solid var(--border);border-radius:7px;font-size:.87rem;outline:none;background:var(--surface);color:var(--text)}
+.filter-sel{padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.87rem;background:var(--surface);color:var(--text);outline:none}
+
+.tbl-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse}
+th{background:var(--surface2);font-size:var(--fs-label);font-weight:700;color:var(--muted);text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:var(--track-label);white-space:nowrap;user-select:none}
+th.sortable{cursor:pointer}
+th.sortable:hover{color:var(--text)}
+th .sort-icon{margin-left:3px;opacity:.4}
+th.sort-asc .sort-icon::after{content:'▲'}
+th.sort-desc .sort-icon::after{content:'▼'}
+th:not(.sort-asc):not(.sort-desc) .sort-icon::after{content:'⇅'}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:.87rem;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface2)}
+.tfoot-row td{background:var(--surface2);font-weight:700;font-size:.87rem;border-top:2px solid var(--border)}
+
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:.73rem;font-weight:700;letter-spacing:.01em}
+.badge.paid,.badge.sold{background:var(--green-bg);color:var(--green)}
+.badge.unpaid,.badge.for-sale{background:var(--red-bg);color:var(--red)}
+.badge.partial,.badge.installments{background:var(--amber-bg);color:var(--amber)}
+
+.action-btns{display:flex;gap:3px;opacity:0;transition:opacity var(--dur-fast) var(--ease-spring-out)}
+tr:hover .action-btns,.action-btns:focus-within{opacity:1}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:13px}
+.card-head{padding:12px 15px;border-bottom:1px solid var(--border);font-size:var(--fs-heading);font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.card-body{padding:13px 15px}
+
+.empty-state{text-align:center;padding:36px;color:var(--muted)}
+.empty-state i{font-size:1.9rem;margin-bottom:9px;display:block;opacity:.35}
+.empty-state p{font-size:.87rem}
+
+.back-btn{display:inline-flex;align-items:center;gap:6px;font-size:.87rem;color:var(--muted);cursor:pointer;margin-bottom:13px}
+.back-btn:hover{color:var(--text)}
+
+.chip{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;font-size:.73rem;color:var(--muted)}
+.chip i{font-size:.67rem;color:var(--accent)}
+.info-chips{display:flex;flex-wrap:wrap;gap:5px}
+.prop-id{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.73rem;background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--muted)}
+.tenant-link{font-weight:600;color:var(--accent);cursor:pointer}
+.tenant-link:hover{text-decoration:underline}
+
+/* ── 9. APP LAYOUT ──────────────────────────────────────────────────────────── */
+
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:var(--sidebar-w);display:flex;flex-direction:column;flex-shrink:0;z-index:50;transition:background var(--dur-med) var(--ease-spring-out)}
+.sidebar-logo{padding:17px;font-size:var(--fs-heading);font-weight:800;border-bottom:1px solid var(--chrome-border);display:flex;align-items:center;gap:8px;color:var(--accent);letter-spacing:var(--track-title)}
+.sidebar-logo i{font-size:1.1rem}
+.sidebar-logo span{flex:1}
+.sb-actions{display:flex;gap:5px}
+.theme-btn{width:30px;height:30px;border:1px solid var(--border);background:var(--surface2);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.87rem;color:var(--muted)}
+.theme-btn:hover,.theme-btn.active-theme{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+.user-chip{margin:10px 10px 5px;background:var(--accent-light);border-radius:9px;padding:9px 11px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.user-chip:hover{opacity:.94}
+.uavatar{width:34px;height:34px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden}
+.uavatar img{width:100%;height:100%;object-fit:cover}
+.uname{font-size:var(--fs-heading);font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logout-btn{font-size:.87rem;color:var(--muted);cursor:pointer;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:var(--surface)}
+.logout-btn:hover{color:var(--red);border-color:var(--red)}
+.nav-back{display:flex;align-items:center;gap:7px;padding:9px 12px;margin:5px 7px 0;font-size:var(--fs-heading);color:var(--muted);cursor:pointer;border-radius:7px}
+.nav-back:hover{background:var(--surface2);color:var(--text)}
+.nav-section{padding:9px 10px 3px;font-size:var(--fs-label);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-label)}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;margin:1px 6px;font-size:.87rem;color:var(--muted);cursor:pointer}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-light);color:var(--accent);font-weight:600}
+.nav-item i{width:15px;text-align:center;font-size:.8rem}
+.nav-item.danger{color:var(--red)}
+.nav-item.danger:hover{background:var(--red-bg);color:var(--red)}
+.hamburger{display:none}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:11px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:5}
+/* Repeat the tracking here on purpose: this selector is more specific than the
+   base heading rule, so without it the cascade would silently drop the
+   size-specific tracking that makes larger type read correctly (§15). */
+.topbar h2{font-size:var(--fs-heading);font-weight:700;letter-spacing:var(--track-title)}
+.topbar-actions{display:flex;gap:7px}
+.content{flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch}
+.view-hidden{display:none!important}
+.view-active{display:block}
+
+/* offline / sync badges */
+.offline-badge{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(26,26,46,.92);-webkit-backdrop-filter:var(--blur-chrome);backdrop-filter:var(--blur-chrome);color:#fff;padding:6px 14px;border-radius:20px;font-size:.8rem;z-index:9999;display:none;box-shadow:var(--shadow2)}
+.offline-badge.show{display:block}
+.sync-badge{position:fixed;bottom:80px;right:16px;background:var(--accent);color:#fff;padding:8px 14px;border-radius:20px;font-size:.8rem;z-index:999;box-shadow:var(--shadow2);cursor:pointer;display:none}
+.sync-badge.show{display:flex;align-items:center;gap:6px}
+
+/* ── 10. AI BUBBLE ──────────────────────────────────────────────────────────── */
+
+.ai-bubble-btn{position:fixed;bottom:20px;right:20px;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:none;box-shadow:0 6px 20px rgba(37,99,235,.35);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.35rem;z-index:8000;transition:transform var(--dur-press) var(--ease-spring),box-shadow var(--dur-fast) var(--ease-spring-out)}
+.ai-bubble-btn:active{transform:scale(.94)}
+.ai-bubble-panel{position:fixed;bottom:85px;right:16px;width:340px;max-height:480px;border:1px solid var(--chrome-border);border-radius:var(--radius-lg);box-shadow:var(--shadow2);z-index:8001;display:none;flex-direction:column;overflow:hidden;transform-origin:bottom right;will-change:transform,opacity}
+.ai-bubble-panel.open{display:flex}
+.ai-bubble-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--accent)}
+.ai-bubble-head span{font-weight:700;color:#fff;font-size:var(--fs-heading)}
+.ai-bubble-head-btns{display:flex;gap:6px}
+.ai-bubble-head-btns button{background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8rem;transition:background var(--dur-fast) var(--ease-spring-out),transform var(--dur-press) var(--ease-spring)}
+.ai-bubble-head-btns button:hover{background:rgba(255,255,255,.35)}
+.ai-bubble-head-btns button:active{transform:scale(.92)}
+.ai-bubble-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;max-height:310px}
+.ai-bubble-msg{max-width:88%;padding:8px 11px;border-radius:10px;font-size:var(--fs-small);line-height:1.5;word-wrap:break-word;white-space:pre-wrap}
+.ai-bubble-msg.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:2px}
+.ai-bubble-msg.bot{background:var(--surface2);color:var(--text);align-self:flex-start;border-bottom-left-radius:2px;border:1px solid var(--border)}
+.ai-bubble-input{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--border)}
+.ai-bubble-input textarea{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:var(--fs-small);font-family:inherit;outline:none;resize:none;background:var(--surface);color:var(--text);max-height:80px}
+.ai-bubble-input textarea:focus{border-color:var(--accent)}
+.ai-bubble-input button{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.87rem;flex-shrink:0;align-self:flex-end;transition:transform var(--dur-press) var(--ease-spring)}
+.ai-bubble-input button:active{transform:scale(.92)}
+.ai-no-key{background:var(--amber-bg);border:1px solid var(--amber);border-radius:7px;padding:7px 10px;font-size:var(--fs-label);color:var(--amber);margin:8px 12px 0;text-align:center}
+
+/* ── 11. CHARTS ─────────────────────────────────────────────────────────────── */
+
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+.chart-card h3{font-size:.87rem;font-weight:700;margin-bottom:3px}
+.chart-card p{font-size:var(--fs-label);color:var(--muted);margin-bottom:12px}
+.chart-wrap{position:relative;height:190px}
+.chart-full{grid-column:1/-1}
+
+/* ── 12. STATUS DOT ─────────────────────────────────────────────────────────── */
+
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-red{background:var(--red)}.dot-amber{background:var(--amber)}.dot-green{background:var(--green)}
+
+/* ── 13. PROFILE ────────────────────────────────────────────────────────────── */
+
+.profile-wrap{max-width:860px}
+.profile-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:16px}
+.avatar{width:56px;height:56px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:800;color:var(--accent);flex-shrink:0}
+.profile-tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:16px}
+.ptab{padding:7px 14px;font-size:.87rem;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--muted);background:none;border-top:none;border-left:none;border-right:none}
+.ptab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+.bill-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.bill-row:last-child{border-bottom:none}
+.bill-label{font-weight:500;font-size:.87rem}
+.bill-val{font-size:var(--fs-heading);font-weight:800;font-variant-numeric:tabular-nums}
+.bill-total{background:var(--accent-light);border-radius:var(--radius-sm);padding:11px 13px;display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.bill-total span:first-child{font-weight:700;color:var(--accent)}
+.bill-total span:last-child{font-size:1.15rem;font-weight:900;color:var(--accent);letter-spacing:var(--track-title);font-variant-numeric:tabular-nums}
+.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
+.doc-item{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;background:var(--surface)}
+.doc-preview{height:90px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.9rem;color:var(--muted);cursor:pointer}
+.doc-meta{padding:6px 8px;border-top:1px solid var(--border)}
+.doc-name{font-size:var(--fs-label);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upload-zone{display:flex;flex-direction:column;align-items:center;gap:6px;border:2px dashed var(--border2);border-radius:var(--radius-sm);padding:20px;text-align:center;cursor:pointer;color:var(--muted);width:100%;transition:border-color var(--dur-fast) var(--ease-spring-out),background var(--dur-fast) var(--ease-spring-out),color var(--dur-fast) var(--ease-spring-out)}
+.upload-zone:hover{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
+.upload-zone i{font-size:1.25rem;margin-bottom:5px;display:block}
+
+/* ── 14. SETTINGS ───────────────────────────────────────────────────────────── */
+
+.settings-wrap{max-width:580px}
+.settings-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px}
+.settings-section-head{padding:12px 16px;border-bottom:1px solid var(--border);font-size:.87rem;font-weight:700;display:flex;align-items:center;gap:7px}
+.settings-section-head i{color:var(--accent)}
+.settings-section-body{padding:14px 16px}
+.pic-preview{width:74px;height:74px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:#fff;overflow:hidden;margin-bottom:10px;cursor:pointer;border:3px solid var(--border);transition:border-color var(--dur-fast) var(--ease-spring-out),transform var(--dur-press) var(--ease-spring)}
+.pic-preview:hover{border-color:var(--accent)}
+.pic-preview:active{transform:scale(.97)}
+.pic-preview img{width:100%;height:100%;object-fit:cover}
+.totp-qr{display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 0}
+.totp-qr img{width:170px;height:170px;border:3px solid var(--border);border-radius:var(--radius-sm)}
+.totp-secret{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-small);background:var(--surface2);padding:6px 9px;border-radius:6px;letter-spacing:2px;word-break:break-all;text-align:center}
+.totp-status{display:flex;align-items:center;gap:7px;padding:9px 11px;border-radius:7px;font-size:.87rem;font-weight:600}
+.totp-status.enabled{background:var(--green-bg);color:var(--green)}
+.totp-status.disabled{background:var(--surface2);color:var(--muted)}
+
+/* ── 15. ADMIN ──────────────────────────────────────────────────────────────── */
+
+.admin-wrap{max-width:860px}
+.admin-user-row{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px 15px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.admin-user-row .au-name{font-weight:700;flex:1;font-size:var(--fs-heading)}
+.admin-user-row .au-stats{font-size:var(--fs-label);color:var(--muted)}
+
+/* ── 16. FARM ───────────────────────────────────────────────────────────────── */
+
+.farm-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);margin-bottom:14px}
+.farm-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.farm-header h3{font-size:var(--fs-heading);font-weight:700}
+.farm-meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:3px}
+.farm-meta span{font-size:var(--fs-label);color:var(--muted);display:flex;align-items:center;gap:3px}
+.farm-body{padding:14px 16px}
+.farm-section{font-size:var(--fs-label);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-label);margin:12px 0 7px}
+.tree-row{display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px solid var(--border)}
+.tree-row:last-child{border-bottom:none}
+.worker-row{display:flex;align-items:center;gap:8px;padding:7px 9px;background:var(--surface2);border-radius:6px;margin-bottom:5px}
+.proj-row{display:flex;gap:10px;align-items:center;padding:9px;background:var(--surface2);border-radius:7px;margin-bottom:7px;flex-wrap:wrap}
+.proj-freq{font-size:var(--fs-label);padding:2px 5px;border-radius:9px;background:var(--accent-light);color:var(--accent);font-weight:600}
+.farm-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:11px}
+.farm-total-box{background:var(--surface2);border-radius:7px;padding:9px 11px;text-align:center}
+.farm-total-box .ftb-label{font-size:var(--fs-label);color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:var(--track-label)}
+.farm-total-box .ftb-val{font-size:1.05rem;font-weight:800;margin-top:3px;letter-spacing:var(--track-title);font-variant-numeric:tabular-nums}
+
+/* ── 17. STORE ──────────────────────────────────────────────────────────────── */
+
+.store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.store-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+/* §7 spatial consistency: a card the user presses lifts from *where it is* and
+   settles back along the same path — enter and exit share one trajectory. */
+.store-card:hover{box-shadow:var(--shadow2);transform:translateY(-2px)}
+.store-img{height:150px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:2.75rem;color:var(--border2);overflow:hidden;position:relative}
+.store-img img{width:100%;height:100%;object-fit:contain}
+.store-img img.zoomed{object-fit:cover}
+.store-img-zoom{position:absolute;top:5px;left:5px;background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:5px;padding:3px 7px;font-size:var(--fs-label);cursor:pointer;z-index:2;display:none}
+.store-card:hover .store-img-zoom{display:block}
+.store-img-upload{position:absolute;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;color:#fff;font-size:.87rem;cursor:pointer}
+.store-card:hover .store-img-upload{display:flex}
+.store-info{padding:11px}
+.store-name{font-size:.87rem;font-weight:700;margin-bottom:3px}
+.store-desc{font-size:var(--fs-small);color:var(--muted);margin-bottom:8px;line-height:1.4;min-height:30px}
+.store-prices{display:flex;gap:7px;align-items:baseline;margin-bottom:8px}
+.store-sell-price{font-size:1.1rem;font-weight:800;color:var(--accent);letter-spacing:var(--track-title);font-variant-numeric:tabular-nums}
+.store-buy-price{font-size:var(--fs-label);color:var(--muted)}
+.store-stock{display:flex;align-items:center;gap:5px;margin-bottom:8px}
+.qty-ctrl{display:flex;align-items:center;gap:5px;background:var(--surface2);border-radius:7px;padding:3px 5px}
+.qty-btn{width:26px;height:26px;border:1px solid var(--border2);border-radius:5px;background:var(--surface);color:var(--text);font-size:.95rem;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.qty-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.qty-val{font-size:.87rem;font-weight:700;min-width:22px;text-align:center;color:var(--text);font-variant-numeric:tabular-nums}
+.sell-btn{width:100%;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:.87rem;font-weight:600;cursor:pointer}
+.sell-btn:hover{filter:brightness(1.08)}
+.sell-btn:disabled{background:var(--border);color:var(--muted);cursor:default}
+.sale-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:7px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sale-buyer{font-weight:600;font-size:.87rem;flex:1}
+.sale-meta{font-size:var(--fs-label);color:var(--muted)}
+.sale-amount{font-size:.87rem;font-weight:800;color:var(--green);font-variant-numeric:tabular-nums}
+.sale-remaining{font-size:var(--fs-small);color:var(--amber);font-weight:600;font-variant-numeric:tabular-nums}
+.payment-history{background:var(--surface2);border-radius:5px;padding:6px 9px;font-size:var(--fs-label);color:var(--text2);margin-top:5px}
+.receipt-thumb{width:40px;height:40px;border-radius:4px;object-fit:cover;cursor:pointer;border:1px solid var(--border)}
+
+/* ── 18. AI ACTION CARD ─────────────────────────────────────────────────────── */
+
+.ai-action-card{background:var(--accent-light);border:1px solid var(--accent);border-radius:10px;padding:11px 13px;margin:4px 0;max-width:88%;font-size:.87rem}
+.ai-action-label{font-size:var(--fs-label);font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:var(--track-label);margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.ai-action-desc{color:var(--text);margin-bottom:9px;line-height:1.5}
+.ai-action-btns{display:flex;gap:6px;flex-wrap:wrap}
+.ai-bubble-panel .ai-action-card{max-width:100%;font-size:var(--fs-small);padding:8px 10px;margin:4px 8px}
+
+/* Typing indicator — the one legitimate looping animation: it communicates
+   ongoing work. §14 disables it under reduced motion. */
+.ai-bubble-typing{display:inline-flex;gap:4px;align-items:center;padding:4px 2px}
+.ai-bubble-typing span{width:5px;height:5px;border-radius:50%;background:var(--muted);animation:ai-dot-b 1.2s infinite ease-in-out;display:inline-block}
+.ai-bubble-typing span:nth-child(2){animation-delay:.2s}
+.ai-bubble-typing span:nth-child(3){animation-delay:.4s}
+@keyframes ai-dot-b{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+
+.rent-split-info{background:var(--accent-light);border-radius:7px;padding:9px 12px;font-size:var(--fs-small);color:var(--accent);margin-top:8px;grid-column:1/-1}
+
+/* ── 19. LOGIN ──────────────────────────────────────────────────────────────── */
+
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+.login-card{border:1px solid var(--chrome-border);border-radius:var(--radius-lg);padding:44px;width:490px;max-width:95vw;box-shadow:var(--shadow2);will-change:transform,opacity}
+.login-logo{text-align:center;margin-bottom:24px}
+.login-logo i{font-size:3.1rem;color:var(--accent);display:block;margin-bottom:8px}
+.login-logo h1{font-size:var(--fs-display);font-weight:800;letter-spacing:var(--track-display);line-height:1.1}
+.login-logo p{color:var(--muted);font-size:1rem;margin-top:3px}
+.login-tabs{display:flex;background:var(--surface2);border-radius:9px;padding:3px;margin-bottom:22px;gap:3px;position:relative}
+.ltab{flex:1;padding:9px;text-align:center;border-radius:6px;font-size:.95rem;font-weight:500;cursor:pointer;border:none;background:none;color:var(--muted);position:relative;z-index:1}
+.ltab.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow);font-weight:600}
+.lfield{margin-bottom:14px}
+.lfield label{display:block;font-size:var(--fs-small);font-weight:600;margin-bottom:4px;color:var(--text2)}
+.lfield input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:1rem;background:var(--surface);color:var(--text);outline:none;transition:border-color var(--dur-fast) var(--ease-spring-out),box-shadow var(--dur-fast) var(--ease-spring-out)}
+.lfield input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,142,247,.16)}
+.login-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:1rem;font-weight:600;cursor:pointer;margin-top:4px;transition:transform var(--dur-press) var(--ease-spring),filter var(--dur-fast) var(--ease-spring-out)}
+.login-btn:hover{filter:brightness(1.08)}
+.login-err{color:var(--red);font-size:.87rem;margin-top:8px;text-align:center;min-height:18px}
+.totp-box{text-align:center;padding:8px 0}
+.totp-input{width:180px;padding:14px;border:2px solid var(--border);border-radius:var(--radius-sm);font-size:1.6rem;text-align:center;letter-spacing:8px;outline:none;background:var(--surface);color:var(--text);font-weight:700;transition:border-color var(--dur-fast) var(--ease-spring-out)}
+.totp-input:focus{border-color:var(--accent)}
+
+/* ── 20. HUB ────────────────────────────────────────────────────────────────── */
+
+.hub-page{min-height:100vh;background:var(--bg);display:flex;flex-direction:column;overflow-y:auto}
+.hub-header{padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.hub-header h1{font-size:1.3rem;font-weight:800;color:var(--accent);letter-spacing:var(--track-title)}
+.hub-header-right{display:flex;align-items:center;gap:10px}
+.hub-user{display:flex;align-items:center;gap:8px;cursor:pointer;padding:5px 10px;border-radius:9px}
+.hub-user:hover{background:var(--surface2)}
+.hub-avatar{width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0}
+.hub-avatar img{width:100%;height:100%;object-fit:cover}
+.hub-body{display:flex;flex-direction:column;align-items:center;padding:44px 24px 90px}
+/* Largest type in the app: tight leading + negative tracking (§15). */
+.hub-body h2{font-size:var(--fs-display);font-weight:800;margin-bottom:8px;text-align:center;letter-spacing:var(--track-display);line-height:1.08}
+.hub-body>p{color:var(--muted);font-size:1rem;margin-bottom:40px;text-align:center}
+.hub-cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+.hub-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius-lg);padding:36px 32px;width:230px;text-align:center;cursor:pointer;box-shadow:var(--shadow)}
+.hub-card:hover{border-color:var(--accent);transform:translateY(-4px);box-shadow:var(--shadow2)}
+.hub-card .hc-icon{width:82px;height:82px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 16px;transition:transform var(--dur-med) var(--ease-spring)}
+.hub-card:hover .hc-icon{transform:scale(1.06)}
+.hub-card h3{font-size:1.1rem;font-weight:700;margin-bottom:6px;letter-spacing:var(--track-title)}
+.hub-card p{font-size:.87rem;color:var(--muted);line-height:1.4}
+.hc-rent .hc-icon{background:var(--accent-light);color:var(--accent)}
+.hc-store .hc-icon{background:var(--green-bg);color:var(--green)}
+.hc-farm .hc-icon{background:var(--amber-bg);color:var(--amber)}
+.hc-ai .hc-icon{background:var(--purple-bg);color:var(--purple)}
+.hc-admin .hc-icon{background:var(--red-bg);color:var(--red)}
+.hub-summary{width:100%;max-width:1000px;margin-top:32px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;box-shadow:var(--shadow2)}
+.hub-summary-title{font-size:var(--fs-heading);font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;color:var(--text);letter-spacing:var(--track-title)}
+.hub-summary-title i{color:var(--accent)}
+.hub-summary-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px}
+.hub-summary-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.hub-chart-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.hub-chart-title{font-size:var(--fs-label);font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:var(--track-label)}
+.hub-chart-full{grid-column:1/-1}
+
+/* ── 21. AI CHAT PAGE ───────────────────────────────────────────────────────── */
+
+.ai-wrap{display:flex;flex-direction:column;height:calc(100vh - 130px);max-width:760px;margin:0 auto}
+.ai-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.ai-msg{max-width:82%;padding:10px 14px;border-radius:12px;font-size:.87rem;line-height:1.6;word-wrap:break-word;white-space:pre-wrap}
+.ai-msg.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+.ai-msg.bot{background:var(--surface2);color:var(--text);align-self:flex-start;border-bottom-left-radius:3px;border:1px solid var(--border)}
+.ai-msg.typing{opacity:.6}
+.ai-input-row{display:flex;gap:8px;padding:14px;border-top:1px solid var(--border);background:var(--chrome-bg);-webkit-backdrop-filter:var(--blur-chrome);backdrop-filter:var(--blur-chrome);flex-shrink:0}
+.ai-input-row textarea{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.87rem;font-family:inherit;outline:none;resize:none;background:var(--surface);color:var(--text);max-height:120px}
+.ai-input-row textarea:focus{border-color:var(--accent)}
+.ai-no-key-notice{background:var(--red-bg);border:1px solid var(--red);border-radius:var(--radius-sm);padding:10px 14px;font-size:var(--fs-small);color:var(--red);margin-bottom:12px;text-align:center}
+
+/* ── 22. QR SCAN ────────────────────────────────────────────────────────────── */
+
+.scan-video-wrap{position:relative;width:100%;max-width:320px;margin:0 auto;border-radius:12px;overflow:hidden;background:#000}
+.scan-video-wrap video{width:100%;display:block;max-height:280px;object-fit:cover}
+.scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.scan-frame{width:180px;height:180px;border:3px solid var(--accent);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.35)}
+
+/* ── 23. TOASTS (§13 — causality, harmony, utility) ─────────────────────────── */
+
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{border:1px solid var(--chrome-border);border-radius:12px;padding:12px 36px 12px 14px;box-shadow:var(--shadow2);font-size:.87rem;pointer-events:all;position:relative;min-width:240px;max-width:320px;will-change:transform,opacity}
+.toast-title{font-weight:700;margin-bottom:2px}
+.toast-body{color:var(--muted);font-size:var(--fs-small);line-height:1.4}
+.toast-close{position:absolute;top:8px;right:10px;border:none;background:none;color:var(--muted);cursor:pointer;font-size:.95rem;line-height:1;padding:2px;border-radius:4px}
+.toast-close:hover{color:var(--text)}
+.toast.warn{border-left:3px solid var(--amber)}
+.toast.error{border-left:3px solid var(--red)}
+.toast.info{border-left:3px solid var(--accent)}
+.toast.success{border-left:3px solid var(--green)}
+
+/* ── 24. RESPONSIVE ─────────────────────────────────────────────────────────── */
+
+@media(max-width:800px){
+  .hub-title-text{display:none}
+  .hub-summary-charts{grid-template-columns:1fr}
+  .charts-grid{grid-template-columns:1fr}
+  .store-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+  .farm-totals{grid-template-columns:1fr 1fr}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .form-grid{grid-template-columns:1fr}
+  .form-row.full{grid-column:1/-1}
+  /* Sidebar becomes a drawer. Its position is owned entirely by motion.js (a
+     spring, so it is 1:1 draggable, interruptible and momentum-aware), so there
+     is deliberately no transform here — a CSS transform out-ranks the inline one
+     the spring writes and would make the drawer snap instead of travel. */
+  .sidebar{position:fixed;left:0;top:0;height:100vh}
+  .sidebar-overlay{position:fixed;inset:0;background:var(--scrim);z-index:49;display:none;opacity:0}
+  .sidebar-overlay.show{display:block}
+  .hamburger{display:flex!important;width:var(--tap-target);height:var(--tap-target);align-items:center;justify-content:center;cursor:pointer;font-size:1.1rem;color:var(--text)}
+  .hub-cards{gap:12px}
+  .hub-card{width:calc(50% - 6px);padding:20px 14px;min-height:120px}
+  .hub-summary{padding:14px}
+  .ai-bubble-panel{width:calc(100vw - 20px);right:10px}
+  .ai-bubble-fab{bottom:16px;right:16px}
+  .content{padding:12px 10px}
+  .topbar{padding:0 10px;min-height:50px}
+  .chart-wrap canvas,.hub-chart-card canvas,.chart-card canvas{max-width:100% !important}
+  .chart-card,.hub-chart-card{overflow:hidden}
+  .ai-full-msgs{padding:12px 10px}
+  .ai-full-bar{padding:8px 10px;gap:6px}
+  .ai-full-bar textarea{font-size:1rem}
+  .ai-full-bar button{min-width:44px;min-height:44px;width:44px;height:44px}
+  .tbl-card{border-radius:var(--radius-sm)}
+  th,td{padding:7px 10px;font-size:var(--fs-small)}
+  .topbar h2{font-size:var(--fs-heading)}
+  /* Comfortable touch targets (§10) */
+  .btn{min-height:36px}
+  .icon-btn{min-width:32px;min-height:32px}
+  .qty-btn{min-width:32px;min-height:32px}
+  .metric{padding:10px 12px}
+  .ai-bubble-msgs{-webkit-overflow-scrolling:touch}
+  /* Sheets rise from the bottom edge — and dismiss back down the same path,
+     so the gesture and the motion agree (§7). */
+  .modal{max-height:92vh;overflow-y:auto;margin:10px;width:calc(100vw - 20px)}
+  .overlay.open{align-items:flex-end}
+}
+
+/* ── 25. FOCUS & TAP ────────────────────────────────────────────────────────── */
+
+*{-webkit-tap-highlight-color:transparent}
+button,.btn,.icon-btn,.nav-item,.qty-btn,.hub-card,.store-card,.theme-btn,.close-btn,.sell-btn,.ai-bubble-btn,[onclick]{-webkit-touch-callout:none}
+
+/* Removing the focus ring entirely would break keyboard use, so instead the ring
+   is only suppressed for pointer input and kept (and made obvious) for keyboard
+   users — `:focus-visible` is exactly that distinction. */
+button:focus,.btn:focus,.icon-btn:focus,.nav-item:focus,.qty-btn:focus,.hub-card:focus,
+.store-card:focus,.theme-btn:focus,.close-btn:focus,.sell-btn:focus,[onclick]:focus{outline:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+/* ── 26. REDUCED MOTION & ACCESSIBILITY (§14) ───────────────────────────────── */
+
+/* Reduced motion is not "no feedback": motion collapses to a cross-fade and the
+   elastic/overshoot character is dropped, while opacity/colour cues stay. */
+@media(prefers-reduced-motion:reduce){
+  /* Stop looping/moving keyframes outright. */
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    scroll-behavior:auto!important;
+  }
+  /* Drop *movement* specifically, rather than all transitions. A blanket
+     `transition-duration:.001ms` would also kill the opacity and colour changes
+     that carry meaning, which is the opposite of what reduced motion asks for. */
+  .btn,.icon-btn,.nav-item,.qty-btn,.theme-btn,.close-btn,.sell-btn,.logout-btn,
+  .ptab,.ltab,.back-btn,.user-chip,.hub-user,.hub-card,.store-card,.login-btn,
+  .pic-preview,.ai-bubble-btn,.ai-bubble-head-btns button,.ai-bubble-input button{
+    transition-property:background,border-color,color,box-shadow,filter,opacity!important;
+  }
+  .btn:active,.icon-btn:active,.nav-item:active,.qty-btn:active,.theme-btn:active,
+  .close-btn:active,.logout-btn:active,.back-btn:active,.ptab:active,.ltab:active,
+  .sell-btn:active,.login-btn:active,.hub-card:active,.store-card:active,
+  .user-chip:active,.hub-user:active,.pic-preview:active{transform:none!important}
+  .store-card:hover,.hub-card:hover{transform:none!important}
+  /* Entrances become short cross-fades (motion.js also collapses movement here). */
+  .toast,.modal,.overlay,.sidebar,.ai-bubble-panel{transition:opacity 200ms linear!important}
+  .content,.hub-body,.metric,.card{animation:none!important}
+  .ai-bubble-typing span{animation:none!important;opacity:.55}
+}
+/* Also honoured when JS flips the flag (see motion.js). */
+.reduced-motion .btn:active,.reduced-motion .icon-btn:active,.reduced-motion .hub-card:active,
+.reduced-motion .store-card:active,.reduced-motion .nav-item:active,.reduced-motion .store-card:hover,
+.reduced-motion .hub-card:hover{transform:none}
+
+/* Reduced transparency: make translucent surfaces frostier/solid — legibility
+   over a busy or low-contrast backdrop matters more than the material effect. */
+@media(prefers-reduced-transparency:reduce){
+  .sidebar,.topbar,.hub-header,.modal,.ai-bubble-panel,.toast,.login-card,.modal-head,.modal-foot,.ai-input-row{
+    background:var(--surface);
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+  }
+  .overlay{background:rgba(0,0,0,.62);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+
+/* More contrast: near-solid backgrounds with a defined border. */
+@media(prefers-contrast:more){
+  :root{--border:#9aa1b0;--border2:#6b7280;--muted:#4b5563;--chrome-border:rgba(0,0,0,.25)}
+  [data-theme="dark"]{--border:#6b7280;--border2:#9aa1b0;--muted:#c5c9d8;--chrome-border:rgba(255,255,255,.3)}
+  .sidebar,.topbar,.hub-header,.modal,.ai-bubble-panel,.toast,.login-card{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;border:1px solid var(--border2)}
+  .btn,.icon-btn,.card,.metric,.store-card,.hub-card{border-color:var(--border2)}
+}
