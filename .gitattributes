@@ -1,0 +1,39 @@
+# Normalise line endings so the project behaves the same on Windows, macOS and
+# Linux: everything text is stored as LF in the repository, and Git converts to
+# the platform's convention on checkout where that matters.
+* text=auto eol=lf
+
+# Binary assets — never touch these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+
+# Windows-only files genuinely need CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Git's own bookkeeping and language detection.
+.gitattributes text
+.gitignore text
+*.py text
+*.js text
+*.css text
+*.html text
+*.json text
+*.md text
+
+# Keep diffs readable for generated data files.
+data*.json text eol=lf
+
+# Exclude these from release archives.
+.github/ export-ignore
+tests/ export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
